@@ -26,8 +26,10 @@ impl GridComplexGenTable {
         let mut x = GridComplexGen::new(diagram, &seq);
         let mut pts = x.points();
 
-        result.insert(x.clone());
-
+        if pred(&x) {
+            result.insert(x.clone());
+        }
+        
         for (i, j) in trans {
             let (i, j) = (i as usize, j as usize);
             let rect = GridRect::between(pts[i], pts[j], size);
