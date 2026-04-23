@@ -12,42 +12,11 @@ impl GridComplexGenTable {
         GridComplexGenTable { inner: AHashSet::new() }
     }
 
-    pub fn len(&self) -> usize { 
-        self.inner.len()
+    pub fn generate_from(diagram: &GridDiagram) -> Self { 
+        Self::generate_filtered(diagram, |_| true)
     }
 
-    pub fn insert(&mut self, x: GridComplexGen) {
-        self.inner.insert(x);
-    }
-
-    pub fn contains(&self, x: &GridComplexGen) -> bool {
-        self.inner.contains(x)
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &GridComplexGen> {
-        self.inner.iter()
-    }
-
-    pub fn gen_from_seq(&self, seq: &[u8]) -> Option<&GridComplexGen> {
-        let code = GridComplexGen::encode(seq);
-        self.inner.iter().find(|g| g.code == code)
-    }
-
-    pub fn gens_of_degree(&self, m: isize, a: isize) -> impl Iterator<Item = &GridComplexGen> {
-        self.inner.iter().filter(move |g| g.maslov_deg == m && g.alexander_deg == a)
-    }
-
-    pub fn support(&self) -> impl Iterator<Item = (isize, isize)> {
-        let mut degs: AHashSet<(isize, isize)> = AHashSet::new();
-        for g in &self.inner {
-            degs.insert((g.maslov_deg, g.alexander_deg));
-        }
-        degs.into_iter()
-    }
-}
-
-impl From<&GridDiagram> for GridComplexGenTable {
-    fn from(diagram: &GridDiagram) -> Self {
+    pub fn generate_filtered(diagram: &GridDiagram, pred: impl Fn(&GridComplexGen) -> bool) -> Self { 
         let n = diagram.grid_number();
         let size = 2 * n;
         let trans = heap_transpositions(n);
@@ -86,10 +55,45 @@ impl From<&GridDiagram> for GridComplexGenTable {
                 a_deg
             );
 
-            result.insert(x.clone());
+            if pred(&x) {
+                result.insert(x.clone());
+            }
         }
 
         result
+    }
+
+    pub fn len(&self) -> usize { 
+        self.inner.len()
+    }
+
+    pub fn insert(&mut self, x: GridComplexGen) {
+        self.inner.insert(x);
+    }
+
+    pub fn contains(&self, x: &GridComplexGen) -> bool {
+        self.inner.contains(x)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &GridComplexGen> {
+        self.inner.iter()
+    }
+
+    pub fn gen_from_seq(&self, seq: &[u8]) -> Option<&GridComplexGen> {
+        let code = GridComplexGen::encode(seq);
+        self.inner.iter().find(|g| g.code == code)
+    }
+
+    pub fn gens_of_degree(&self, m: isize, a: isize) -> impl Iterator<Item = &GridComplexGen> {
+        self.inner.iter().filter(move |g| g.maslov_deg == m && g.alexander_deg == a)
+    }
+
+    pub fn support(&self) -> impl Iterator<Item = (isize, isize)> {
+        let mut degs: AHashSet<(isize, isize)> = AHashSet::new();
+        for g in &self.inner {
+            degs.insert((g.maslov_deg, g.alexander_deg));
+        }
+        degs.into_iter()
     }
 }
 
@@ -101,7 +105,7 @@ mod tests {
     fn test_produce() {
         let diagram = GridDiagram::from_sequences(&[1, 2, 0], &[0, 1, 2]);
         let n = diagram.grid_number();
-        let table = GridComplexGenTable::from(&diagram);
+        let table = GridComplexGenTable::generate_from(&diagram);
 
         // 3x3 grid has 3! = 6 generators
         assert_eq!(table.iter().count(), 6);
@@ -122,7 +126,7 @@ mod tests {
     #[test]
     fn test_produce_trefoil() {
         let diagram = GridDiagram::trefoil();
-        let table = GridComplexGenTable::from(&diagram);
+        let table = GridComplexGenTable::generate_from(&diagram);
 
         let n = diagram.grid_number();
         assert_eq!(n, 5);

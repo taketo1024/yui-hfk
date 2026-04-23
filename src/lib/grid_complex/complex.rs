@@ -1,8 +1,8 @@
 use std::marker::PhantomData;
-use std::sync::Arc;
+use std::ops::RangeInclusive;
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
-use yui_homology::{ChainComplex2, Grid, isize2, Summand};
+use yui_homology::{ChainComplex2, Grid, Summand, isize2, range_of};
 use crate::grid_diagram::{GridDiagram, GridRect};
 use super::gen::GridComplexGen;
 use super::gen_table::GridComplexGenTable;
@@ -51,7 +51,11 @@ pub struct GridComplex<V: GridComplexVariant> {
 
 impl<V: GridComplexVariant> GridComplex<V> {
     pub fn new(diagram: GridDiagram) -> Self {
-        let generators = GridComplexGenTable::from(&diagram);
+        Self::new_filtered(diagram, |_| true)
+    }
+
+    pub fn new_filtered(diagram: GridDiagram, pred: impl Fn(&GridComplexGen) -> bool) -> Self {
+        let generators = GridComplexGenTable::generate_filtered(&diagram, pred);
         GridComplex { diagram, gens: generators, _phantom: PhantomData }
     }
 
@@ -59,34 +63,12 @@ impl<V: GridComplexVariant> GridComplex<V> {
         self.diagram.grid_number()
     }
 
-    pub fn into_complex(self) -> ChainComplex2<GridComplexGen, FF2>
-    where V: Send + Sync + 'static
-    {
-        let this = Arc::new(self);
-
-        let support: Vec<isize2> = this.gens.support()
-            .map(|(m, a)| isize2(m, a))
-            .collect();
-
-        let summands = {
-            let this = this.clone();
-            Grid::generate(support, move |idx| {
-                let gens = this.gens.gens_of_degree(idx.0, idx.1).cloned();
-                Summand::from_raw_gens(gens)
-            })
-        };
-
-        ChainComplex2::new(summands, isize2(-1, 0), move |_, x| {
-            this.differentiate(x)
-        })
+    pub fn maslov_deg_range(&self) -> RangeInclusive<isize> { 
+        range_of(self.gens.support().map(|(i, _)| i))
     }
 
-    fn differentiate(&self, x: &Lc<GridComplexGen, FF2>) -> Lc<GridComplexGen, FF2> {
-        let mut result = Lc::new();
-        for (gen, _) in x.iter() {
-            result += self.differentiate_gen(gen);
-        }
-        result
+    pub fn alex_deg_range(&self) -> RangeInclusive<isize> { 
+        range_of(self.gens.support().map(|(_, j)| j))
     }
 
     fn differentiate_gen(&self, x: &GridComplexGen) -> Lc<GridComplexGen, FF2> {
@@ -95,6 +77,7 @@ impl<V: GridComplexVariant> GridComplex<V> {
         let n = self.grid_number();
         let grid_size = 2 * n;
         let pts = x.points();
+
         let mut seq = x.sequence();
         let mut result = Lc::new();
 
@@ -123,6 +106,35 @@ impl<V: GridComplexVariant> GridComplex<V> {
         }
 
         result
+    }
+}
+
+impl GridComplex<Tilde> {
+    fn differentiate(&self, x: &Lc<GridComplexGen, FF2>) -> Lc<GridComplexGen, FF2> {
+        let mut result = Lc::new();
+        for (gen, _) in x.iter() {
+            result += self.differentiate_gen(gen);
+        }
+        result
+    }
+
+    pub fn into_complex(self) -> ChainComplex2<GridComplexGen, FF2> {
+        let this = &self;
+
+        let support: Vec<isize2> = this.gens.support()
+            .map(|(m, a)| isize2(m, a))
+            .collect();
+
+        let summands = {
+            Grid::generate(support, move |idx| {
+                let gens = this.gens.gens_of_degree(idx.0, idx.1).cloned();
+                Summand::from_raw_gens(gens)
+            })
+        };
+
+        ChainComplex2::new(summands, isize2(-1, 0), move |_, x| {
+            self.differentiate(x)
+        })
     }
 }
 
@@ -169,7 +181,7 @@ mod tests {
     }
 
     #[test]
-    fn test_tilde_trefoil_d() {
+    fn test_tilde_trefoil() {
         let gd = GridDiagram::trefoil();
         let cx = GridComplex::<Tilde>::new(gd);
         assert_eq!(cx.grid_number(), 5);
@@ -186,5 +198,25 @@ mod tests {
         assert_eq!(h[(-4, -3)].rank(), 11);
         assert_eq!(h[(-5, -4)].rank(), 5);
         assert_eq!(h[(-6, -5)].rank(), 1);
+    }
+
+    #[test]
+    fn test_tilde_trefoil_filtered() {
+        let gd = GridDiagram::trefoil();
+        let cx = GridComplex::<Tilde>::new_filtered(gd, |x| x.alexander_deg >= 0);
+        assert_eq!(cx.grid_number(), 5);
+        // assert_eq!(cx.gens.len(), 120);
+
+        let cx = cx.into_complex();
+        cx.check_d_all();
+
+        let h = cx.homology();
+        assert_eq!(h[(0, 1)].rank(), 1);
+        assert_eq!(h[(-1, 0)].rank(), 5);
+        assert_eq!(h[(-2, -1)].rank(), 0);
+        assert_eq!(h[(-3, -2)].rank(), 0);
+        assert_eq!(h[(-4, -3)].rank(), 0);
+        assert_eq!(h[(-5, -4)].rank(), 0);
+        assert_eq!(h[(-6, -5)].rank(), 0);
     }
 }
