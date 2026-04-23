@@ -113,6 +113,14 @@ impl GridDiagram {
         rects
     }
 
+    pub fn unknot() -> GridDiagram { 
+        GridDiagram::from_sequences(&[0,1], &[1,0])
+    }
+
+    pub fn trefoil() -> GridDiagram { 
+        GridDiagram::from_sequences(&[2,1,0,4,3], &[4,3,2,1,0])
+    }
+
     // ============ Degree computation (Section 4.1 of arXiv:2002.09210) ============
 
     /// Count pairs (p, q) ∈ x × y where p strictly dominates q.
