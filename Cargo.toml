@@ -25,3 +25,5 @@ log = "0.4"
 yui-core     = { path = "../yui/lib-core" }
 yui-matrix   = { path = "../yui/lib-matrix" }
 yui-homology = { path = "../yui/lib-homology" }
+num-traits = "0.2.19"
+num-integer = "0.1.46"
