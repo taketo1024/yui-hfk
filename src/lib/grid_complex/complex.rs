@@ -130,29 +130,61 @@ impl<V: GridComplexVariant> GridComplex<V> {
 mod tests {
     use super::*;
     use crate::grid_diagram::GridDiagram;
-    use yui_homology::{ChainComplexTrait, DisplayTable, GridTrait, SummandTrait};
+    use yui_homology::{ChainComplexTrait, SummandTrait};
 
-    fn trefoil() -> GridDiagram {
-        GridDiagram::from_sequences(&[1, 2, 0], &[0, 1, 2])
+    fn unknot_twist() -> GridDiagram { 
+        GridDiagram::from_arc_presentation(&[1,2,3,1,2,3])
     }
 
     #[test]
-    fn test_tilde_generators() {
-        let cx = GridComplex::<Tilde>::new(trefoil()).into_complex();
-        let total: isize = cx.support().map(|i| cx[i].rank() as isize).sum();
-        assert_eq!(total, 6);
-    }
+    fn test_tilde_unknot() {
+        let gd = GridDiagram::unknot();
+        let cx = GridComplex::<Tilde>::new(gd);
+        assert_eq!(cx.grid_number(), 2);
+        assert_eq!(cx.generators.len(), 2);
 
-    #[test]
-    fn test_tilde_d_squared_zero() {
-        let cx = GridComplex::<Tilde>::new(trefoil()).into_complex();
+        let cx = cx.into_complex();
         cx.check_d_all();
+
+        let h = cx.homology();
+        assert_eq!(h[(0, 0)].rank(), 1);
+        assert_eq!(h[(-1, -1)].rank(), 1);
     }
 
     #[test]
-    fn test_tilde_homology() {
-        let cx = GridComplex::<Tilde>::new(trefoil()).into_complex();
+    fn test_tilde_unknot_twist() {
+        let gd = unknot_twist();
+        let cx = GridComplex::<Tilde>::new(gd);
+        assert_eq!(cx.grid_number(), 3);
+        assert_eq!(cx.generators.len(), 6);
+
+        let cx = cx.into_complex();
+        cx.check_d_all();
+
+        // note: not invariant
         let h = cx.homology();
-        h.print_table("i", "j");
+        assert_eq!(h[(0, 0)].rank(), 1);
+        assert_eq!(h[(-1, -1)].rank(), 2);
+        assert_eq!(h[(-2, -2)].rank(), 1);
+    }
+
+    #[test]
+    fn test_tilde_trefoil_d() {
+        let gd = GridDiagram::trefoil();
+        let cx = GridComplex::<Tilde>::new(gd);
+        assert_eq!(cx.grid_number(), 5);
+        assert_eq!(cx.generators.len(), 120);
+
+        let cx = cx.into_complex();
+        cx.check_d_all();
+
+        let h = cx.homology();
+        assert_eq!(h[(0, 1)].rank(), 1);
+        assert_eq!(h[(-1, 0)].rank(), 5);
+        assert_eq!(h[(-2, -1)].rank(), 11);
+        assert_eq!(h[(-3, -2)].rank(), 14);
+        assert_eq!(h[(-4, -3)].rank(), 11);
+        assert_eq!(h[(-5, -4)].rank(), 5);
+        assert_eq!(h[(-6, -5)].rank(), 1);
     }
 }
