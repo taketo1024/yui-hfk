@@ -6,5 +6,8 @@
 //! See arXiv:2002.09210 for mathematical background.
 
 pub mod grid_diagram;
+pub mod grid_complex;
+pub mod misc;
 
 pub use grid_diagram::{GridDiagram, GridPoint, GridRect};
+pub use grid_complex::{GridComplexGen, GridComplex, GridComplexVariant, Tilde, Hat, Minus, Filtered};
