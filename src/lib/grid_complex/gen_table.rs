@@ -1,42 +1,48 @@
-use ahash::AHashMap;
+use ahash::AHashSet;
 use crate::grid_diagram::{GridDiagram, GridPoint, GridRect};
 use crate::misc::heap::heap_transpositions;
 use super::gen::GridComplexGen;
 
 pub struct GridComplexGenTable {
-    inner: AHashMap<(isize, isize), Vec<GridComplexGen>>,
+    inner: AHashSet<GridComplexGen>,
 }
 
 impl GridComplexGenTable {
     fn new() -> Self {
-        GridComplexGenTable { inner: AHashMap::new() }
+        GridComplexGenTable { inner: AHashSet::new() }
+    }
+
+    pub fn len(&self) -> usize { 
+        self.inner.len()
     }
 
     pub fn insert(&mut self, x: GridComplexGen) {
-        self.inner.entry((x.maslov_deg, x.alexander_deg)).or_default().push(x);
+        self.inner.insert(x);
     }
 
     pub fn contains(&self, x: &GridComplexGen) -> bool {
-        self.inner.get(&(x.maslov_deg, x.alexander_deg))
-            .is_some_and(|v| v.contains(x))
+        self.inner.contains(x)
     }
 
-    pub fn gens_of_degree(&self, m: isize, a: isize) -> &[GridComplexGen] {
-        self.inner.get(&(m, a)).map(|v| v.as_slice()).unwrap_or(&[])
+    pub fn iter(&self) -> impl Iterator<Item = &GridComplexGen> {
+        self.inner.iter()
     }
 
-    pub fn degrees(&self) -> impl Iterator<Item = (isize, isize)> + '_ {
-        self.inner.keys().copied()
+    pub fn gen_from_seq(&self, seq: &[u8]) -> Option<&GridComplexGen> {
+        let code = GridComplexGen::encode(seq);
+        self.inner.iter().find(|g| g.code == code)
     }
 
-    pub fn all_gens(&self) -> impl Iterator<Item = &GridComplexGen> {
-        self.inner.values().flatten()
+    pub fn gens_of_degree(&self, m: isize, a: isize) -> impl Iterator<Item = &GridComplexGen> {
+        self.inner.iter().filter(move |g| g.maslov_deg == m && g.alexander_deg == a)
     }
 
-    fn sort_buckets(&mut self) {
-        for gens in self.inner.values_mut() {
-            gens.sort_unstable();
+    pub fn support(&self) -> impl Iterator<Item = (isize, isize)> {
+        let mut degs: AHashSet<(isize, isize)> = AHashSet::new();
+        for g in &self.inner {
+            degs.insert((g.maslov_deg, g.alexander_deg));
         }
+        degs.into_iter()
     }
 }
 
@@ -83,7 +89,6 @@ impl From<&GridDiagram> for GridComplexGenTable {
             result.insert(x.clone());
         }
 
-        result.sort_buckets();
         result
     }
 }
@@ -99,7 +104,7 @@ mod tests {
         let table = GridComplexGenTable::from(&diagram);
 
         // 3x3 grid has 3! = 6 generators
-        assert_eq!(table.all_gens().count(), 6);
+        assert_eq!(table.iter().count(), 6);
 
         // Check all generators are produced correctly
         let mut seq: Vec<u8> = (0..n).collect();
