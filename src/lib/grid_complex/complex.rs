@@ -11,10 +11,10 @@ pub trait GridComplexVariant {
     fn is_admissible(rect: &GridRect, diagram: &GridDiagram, grid_size: u8) -> bool;
 }
 
-pub struct Tilde;
-pub struct Hat;
-pub struct Minus;
-pub struct Filtered;
+pub struct Tilde;     // [Book] p.72,  Def 4.4.1
+pub struct Hat;       // [Book] p.80,  Def 4.6.12.
+pub struct Minus;     // [Book] p.75,  Def 4.6.1
+pub struct Filtered;  // [Book] p.252, Def 13.2.1
 
 impl GridComplexVariant for Tilde {
     fn is_admissible(rect: &GridRect, diagram: &GridDiagram, grid_size: u8) -> bool {
@@ -45,14 +45,14 @@ impl GridComplexVariant for Filtered {
 
 pub struct GridComplex<V: GridComplexVariant> {
     pub diagram: GridDiagram,
-    pub generators: GridComplexGenTable,
+    pub gens: GridComplexGenTable,
     _phantom: PhantomData<V>,
 }
 
 impl<V: GridComplexVariant> GridComplex<V> {
     pub fn new(diagram: GridDiagram) -> Self {
         let generators = GridComplexGenTable::from(&diagram);
-        GridComplex { diagram, generators, _phantom: PhantomData }
+        GridComplex { diagram, gens: generators, _phantom: PhantomData }
     }
 
     pub fn grid_number(&self) -> u8 {
@@ -64,14 +64,14 @@ impl<V: GridComplexVariant> GridComplex<V> {
     {
         let this = Arc::new(self);
 
-        let support: Vec<isize2> = this.generators.support()
+        let support: Vec<isize2> = this.gens.support()
             .map(|(m, a)| isize2(m, a))
             .collect();
 
         let summands = {
             let this = this.clone();
             Grid::generate(support, move |idx| {
-                let gens = this.generators.gens_of_degree(idx.0, idx.1).cloned();
+                let gens = this.gens.gens_of_degree(idx.0, idx.1).cloned();
                 Summand::from_raw_gens(gens)
             })
         };
@@ -113,7 +113,7 @@ impl<V: GridComplexVariant> GridComplex<V> {
                 let rj = (rect.end().x / 2) % n;
 
                 seq.swap(ri as usize, rj as usize);
-                let y = self.generators.gen_from_seq(&seq);
+                let y = self.gens.gen_from_seq(&seq);
                 seq.swap(ri as usize, rj as usize);
 
                 if let Some(y) = y {
@@ -141,7 +141,7 @@ mod tests {
         let gd = GridDiagram::unknot();
         let cx = GridComplex::<Tilde>::new(gd);
         assert_eq!(cx.grid_number(), 2);
-        assert_eq!(cx.generators.len(), 2);
+        assert_eq!(cx.gens.len(), 2);
 
         let cx = cx.into_complex();
         cx.check_d_all();
@@ -156,7 +156,7 @@ mod tests {
         let gd = unknot_twist();
         let cx = GridComplex::<Tilde>::new(gd);
         assert_eq!(cx.grid_number(), 3);
-        assert_eq!(cx.generators.len(), 6);
+        assert_eq!(cx.gens.len(), 6);
 
         let cx = cx.into_complex();
         cx.check_d_all();
@@ -173,7 +173,7 @@ mod tests {
         let gd = GridDiagram::trefoil();
         let cx = GridComplex::<Tilde>::new(gd);
         assert_eq!(cx.grid_number(), 5);
-        assert_eq!(cx.generators.len(), 120);
+        assert_eq!(cx.gens.len(), 120);
 
         let cx = cx.into_complex();
         cx.check_d_all();
