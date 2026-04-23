@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 use std::ops::RangeInclusive;
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
-use yui_homology::{ChainComplex2, Grid, Summand, SummandTrait, isize2, range_of};
+use yui_homology::{ChainComplex2, Grid, Homology2, Summand, SummandTrait, isize2, range_of};
 use crate::grid_diagram::{GridDiagram, GridRect};
 use super::gen::GridComplexGen;
 use super::gen_table::GridComplexGenTable;
@@ -137,12 +137,16 @@ impl GridComplex<Tilde> {
         })
     }
 
+    pub fn into_homology(self) -> Homology2<GridComplexGen, FF2> {
+        self.into_complex().reduced().homology()
+    }
+
     pub fn genus(gd: &GridDiagram) -> usize { 
         let cx = GridComplex::<Tilde>::new_filtered(gd.clone(), |x| x.alexander_deg > 0);
         let m_range = cx.maslov_deg_range();
         let a_range = cx.alex_deg_range();
 
-        let h = cx.into_complex().reduced().homology();
+        let h = cx.into_homology();
         for j in a_range.rev() { 
             for i in m_range.clone().rev() { 
                 if h[(i, j)].rank() > 0 { 
@@ -158,7 +162,7 @@ impl GridComplex<Tilde> {
 mod tests {
     use super::*;
     use crate::grid_diagram::GridDiagram;
-    use yui_homology::{ChainComplexTrait, SummandTrait};
+    use yui_homology::SummandTrait;
 
     fn unknot_twist() -> GridDiagram { 
         GridDiagram::from_arc_presentation(&[1,2,3,1,2,3])
@@ -171,10 +175,7 @@ mod tests {
         assert_eq!(cx.grid_number(), 2);
         assert_eq!(cx.gens.len(), 2);
 
-        let cx = cx.into_complex();
-        cx.check_d_all();
-
-        let h = cx.homology();
+        let h = cx.into_homology();
         assert_eq!(h[(0, 0)].rank(), 1);
         assert_eq!(h[(-1, -1)].rank(), 1);
     }
@@ -186,11 +187,8 @@ mod tests {
         assert_eq!(cx.grid_number(), 3);
         assert_eq!(cx.gens.len(), 6);
 
-        let cx = cx.into_complex();
-        cx.check_d_all();
-
         // note: not invariant
-        let h = cx.homology();
+        let h = cx.into_homology();
         assert_eq!(h[(0, 0)].rank(), 1);
         assert_eq!(h[(-1, -1)].rank(), 2);
         assert_eq!(h[(-2, -2)].rank(), 1);
@@ -205,10 +203,7 @@ mod tests {
         assert_eq!(cx.maslov_deg_range(), -6..=0);
         assert_eq!(cx.alex_deg_range(), -5..=1);
 
-        let cx = cx.into_complex();
-        cx.check_d_all();
-
-        let h = cx.homology();
+        let h = cx.into_homology();
         assert_eq!(h[(0, 1)].rank(), 1);
         assert_eq!(h[(-1, 0)].rank(), 5);
         assert_eq!(h[(-2, -1)].rank(), 11);
@@ -228,10 +223,7 @@ mod tests {
         assert_eq!(cx.maslov_deg_range(), -1..=0);
         assert_eq!(cx.alex_deg_range(), 0..=1);
 
-        let cx = cx.into_complex();
-        cx.check_d_all();
-
-        let h = cx.homology();
+        let h = cx.into_homology();
         assert_eq!(h[(0, 1)].rank(), 1);
         assert_eq!(h[(-1, 0)].rank(), 5);
         assert_eq!(h[(-2, -1)].rank(), 0);
