@@ -20,15 +20,11 @@ impl GridRect {
 
     /// Construct the positive rectangle from p to q (wrapping around the torus).
     pub fn between(p: GridPoint, q: GridPoint, grid_size: u8) -> Self {
-        assert!(grid_size <= MAX_SIZE);
-        assert!(p <= q || p < q.shift(grid_size as i8, grid_size as i8)); 
-
         let l = grid_size;
-        let size = if p <= q { 
-            (q.x - p.x, q.y - p.y)
-        } else { 
-            (q.x + l - p.x, q.y + l - p.y)
-        };
+        let size = (
+            if p.x <= q.x { q.x - p.x } else { l + q.x - p.x },
+            if p.y <= q.y { q.y - p.y } else { l + q.y - p.y },
+        );
         GridRect::new(p, size)
     }
 
