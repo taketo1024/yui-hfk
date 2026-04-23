@@ -4,7 +4,7 @@ use num_integer::Integer;
 
 /// A point on the grid with coordinates (x, y).
 /// Used for O-markings, X-markings, and generator positions.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct GridPoint {
     pub x: u8,
     pub y: u8,
@@ -49,6 +49,18 @@ impl GridPoint {
 impl fmt::Display for GridPoint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "({}, {})", self.x, self.y)
+    }
+}
+
+impl PartialOrd for GridPoint {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        use std::cmp::Ordering::*;
+        match (self.x.cmp(&other.x), self.y.cmp(&other.y)) {
+            (Less,    Less)    => Some(Less),
+            (Equal,   Equal)   => Some(Equal),
+            (Greater, Greater) => Some(Greater),
+            _                  => None,
+        }
     }
 }
 
@@ -98,12 +110,14 @@ mod tests {
     }
 
     #[test]
-    fn test_ord() {
+    fn test_partial_ord() {
         let p = GridPoint::new(1, 2);
-        let q = GridPoint::new(1, 3);
-        let r = GridPoint::new(2, 0);
-        assert!(p < q);
-        assert!(q < r);
+        let q = GridPoint::new(2, 3);
+        let r = GridPoint::new(2, 1);
+        assert!(p < q);           // both components less
+        assert!(!(p < r));        // x: 1 < 2 but y: 2 > 1 → incomparable
+        assert!(!(r < p));
+        assert_eq!(p.partial_cmp(&r), None);
     }
 }
 
