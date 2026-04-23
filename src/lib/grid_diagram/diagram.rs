@@ -128,6 +128,7 @@ impl GridDiagram {
 
     /// Maslov grading formula.
     /// M(ref, x) = (J(x, x) - 2*J(x, ref) + J(ref, ref)) / 2 + 1
+    /// See Book Section 4.3, eqn (4.5). 
     pub fn maslov_grading(ref_pts: &[GridPoint], x: &[GridPoint]) -> isize {
         let j_xx = Self::symmetric_dominations(x, x);
         let j_xr = Self::symmetric_dominations(x, ref_pts);
@@ -141,7 +142,8 @@ impl GridDiagram {
     }
 
     /// Compute the Alexander degree of a generator given by its points.
-    /// A(x) = (M(x) - M_X(x) - n + 1) / 2
+    /// A(x) = (M_O(x) - M_X(x) - n + 1) / 2
+    /// See Book Def 4.3.2. 
     pub fn alexander_degree(&self, gen_points: &[GridPoint]) -> isize {
         let n = self.grid_number() as isize;
         let m_o = Self::maslov_grading(&self.os, gen_points);
