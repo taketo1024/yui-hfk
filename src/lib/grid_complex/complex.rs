@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 use std::ops::RangeInclusive;
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
-use yui_homology::{ChainComplex2, Grid, Summand, isize2, range_of};
+use yui_homology::{ChainComplex2, Grid, Summand, SummandTrait, isize2, range_of};
 use crate::grid_diagram::{GridDiagram, GridRect};
 use super::gen::GridComplexGen;
 use super::gen_table::GridComplexGenTable;
@@ -136,6 +136,22 @@ impl GridComplex<Tilde> {
             self.differentiate(x)
         })
     }
+
+    pub fn genus(gd: &GridDiagram) -> usize { 
+        let cx = GridComplex::<Tilde>::new_filtered(gd.clone(), |x| x.alexander_deg > 0);
+        let m_range = cx.maslov_deg_range();
+        let a_range = cx.alex_deg_range();
+
+        let h = cx.into_complex().reduced().homology();
+        for j in a_range.rev() { 
+            for i in m_range.clone().rev() { 
+                if h[(i, j)].rank() > 0 { 
+                    return j as usize
+                }
+            }
+        }
+        0
+    }
 }
 
 #[cfg(test)]
@@ -186,6 +202,8 @@ mod tests {
         let cx = GridComplex::<Tilde>::new(gd);
         assert_eq!(cx.grid_number(), 5);
         assert_eq!(cx.gens.len(), 120);
+        assert_eq!(cx.maslov_deg_range(), -6..=0);
+        assert_eq!(cx.alex_deg_range(), -5..=1);
 
         let cx = cx.into_complex();
         cx.check_d_all();
@@ -204,8 +222,11 @@ mod tests {
     fn test_tilde_trefoil_filtered() {
         let gd = GridDiagram::trefoil();
         let cx = GridComplex::<Tilde>::new_filtered(gd, |x| x.alexander_deg >= 0);
+
         assert_eq!(cx.grid_number(), 5);
-        // assert_eq!(cx.gens.len(), 120);
+        assert_eq!(cx.gens.len(), 6);
+        assert_eq!(cx.maslov_deg_range(), -1..=0);
+        assert_eq!(cx.alex_deg_range(), 0..=1);
 
         let cx = cx.into_complex();
         cx.check_d_all();
@@ -218,5 +239,26 @@ mod tests {
         assert_eq!(h[(-4, -3)].rank(), 0);
         assert_eq!(h[(-5, -4)].rank(), 0);
         assert_eq!(h[(-6, -5)].rank(), 0);
+    }
+
+    #[test]
+    fn test_genus_unknot() {
+        let gd = GridDiagram::unknot();
+        let g = GridComplex::<Tilde>::genus(&gd);
+        assert_eq!(g, 0);
+    }
+
+    #[test]
+    fn test_genus_trefoil() {
+        let gd = GridDiagram::trefoil();
+        let g = GridComplex::<Tilde>::genus(&gd);
+        assert_eq!(g, 1);
+    }
+
+    #[test]
+    fn test_genus_5_1() {
+        let gd = GridDiagram::from_sequences(&[5,4,3,2,1,0,6], &[0,6,5,4,3,2,1]);
+        let g = GridComplex::<Tilde>::genus(&gd);
+        assert_eq!(g, 2);
     }
 }
