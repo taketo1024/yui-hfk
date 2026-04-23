@@ -1,5 +1,6 @@
 use super::MAX_SIZE;
 use std::fmt;
+use num_integer::Integer;
 
 /// A point on the grid with coordinates (x, y).
 /// Used for O-markings, X-markings, and generator positions.
@@ -34,6 +35,14 @@ impl GridPoint {
             self.shift(-1, -1),
             self.shift(1, -1),
         ]
+    }
+
+    pub fn is_even(&self) -> bool { 
+        self.x.is_even() && self.y.is_even()
+    }
+
+    pub fn is_odd(&self) -> bool { 
+        self.x.is_odd() && self.y.is_odd()
     }
 }
 
