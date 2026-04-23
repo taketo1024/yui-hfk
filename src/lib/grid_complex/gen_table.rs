@@ -98,13 +98,35 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_produce_trefoil() {
+    fn test_produce() {
         let diagram = GridDiagram::from_sequences(&[1, 2, 0], &[0, 1, 2]);
         let n = diagram.grid_number();
         let table = GridComplexGenTable::from(&diagram);
 
         // 3x3 grid has 3! = 6 generators
         assert_eq!(table.iter().count(), 6);
+
+        // Check all generators are produced correctly
+        let mut seq: Vec<u8> = (0..n).collect();
+
+        let x = GridComplexGen::new(&diagram, &seq);
+        assert!(table.contains(&x));
+
+        for (i, j) in heap_transpositions(n) {
+            seq.swap(i as usize, j as usize);
+            let x = GridComplexGen::new(&diagram, &seq);
+            assert!(table.contains(&x));
+        }
+    }
+
+    #[test]
+    fn test_produce_trefoil() {
+        let diagram = GridDiagram::trefoil();
+        let table = GridComplexGenTable::from(&diagram);
+
+        let n = diagram.grid_number();
+        assert_eq!(n, 5);
+        assert_eq!(table.iter().count(), 120);
 
         // Check all generators are produced correctly
         let mut seq: Vec<u8> = (0..n).collect();
