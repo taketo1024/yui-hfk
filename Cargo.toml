@@ -1,0 +1,27 @@
+[package]
+name = "yui-hfk"
+version = "0.1.0"
+authors = ["Taketo Sano <taketo1024@gmail.com>"]
+description = "YUI-HFK: Heegaard Floer Knot Homology"
+license = "MIT"
+edition = "2021"
+
+[lib]
+path = "src/lib/lib.rs"
+
+[features]
+default = ["multithread"]
+multithread = ["rayon"]
+
+[profile.release]
+overflow-checks = true
+
+[dependencies]
+itertools = "0.13.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rayon = { version = "1.10.0", optional = true }
+log = "0.4"
+yui-core     = { path = "../yui/lib-core" }
+yui-matrix   = { path = "../yui/lib-matrix" }
+yui-homology = { path = "../yui/lib-homology" }
