@@ -51,7 +51,7 @@ impl GCGenSet {
             // (4.4)  A(y) - A(x) = #(r ∩ Os) - #(r ∩ Xs)
 
             let m_deg = x.maslov_deg + 2 * (n_o - c) - 1;
-            let a_deg = x.alexander_deg + n_o - n_x;
+            let a_deg = x.alex_deg + n_o - n_x;
 
             x = GCGen::from_raw(
                 GCGen::encode(&seq),
@@ -90,7 +90,7 @@ impl GCGenSet {
     }
 
     pub fn gens_of_degree(&self, m: isize, a: isize) -> impl Iterator<Item = &GCGen> {
-        self.inner.iter().filter(move |g| g.maslov_deg == m && g.alexander_deg == a)
+        self.inner.iter().filter(move |g| g.maslov_deg == m && g.alex_deg == a)
     }
 
     pub fn maslov_deg_range(&self) -> RangeInclusive<isize> { 
@@ -98,7 +98,7 @@ impl GCGenSet {
     }
 
     pub fn alex_deg_range(&self) -> RangeInclusive<isize> { 
-        range_of(self.iter().map(|x| x.alexander_deg))
+        range_of(self.iter().map(|x| x.alex_deg))
     }
 }
 

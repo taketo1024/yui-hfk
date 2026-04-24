@@ -8,24 +8,24 @@ pub struct GCGen {
     pub code: usize,
     pub grid_number: u8,
     pub maslov_deg: isize,
-    pub alexander_deg: isize,
+    pub alex_deg: isize,
 }
 
 impl GCGen {
     pub fn new(diagram: &GridDiagram, seq: &[u8]) -> Self {
         let pts = even_points(seq);
         let maslov_deg = diagram.maslov_degree(&pts);
-        let alexander_deg = diagram.alexander_degree(&pts);
+        let alex_deg = diagram.alexander_degree(&pts);
         Self::from_raw(
             Self::encode(seq),
             seq.len() as u8,
             maslov_deg,
-            alexander_deg,
+            alex_deg,
         )
     }
 
-    pub fn from_raw(code: usize, grid_number: u8, maslov_deg: isize, alexander_deg: isize) -> Self {
-        GCGen { code, grid_number, maslov_deg, alexander_deg }
+    pub fn from_raw(code: usize, grid_number: u8, maslov_deg: isize, alex_deg: isize) -> Self {
+        GCGen { code, grid_number, maslov_deg, alex_deg }
     }
 
     pub fn sequence(&self) -> Vec<u8> {
@@ -127,8 +127,8 @@ impl GCInfGen {
         self.gen.maslov_deg - 2 * self.u.total_deg() as isize
     }
 
-    pub fn alexander_deg(&self) -> isize {
-        self.gen.alexander_deg - self.u.total_deg() as isize
+    pub fn alex_deg(&self) -> isize {
+        self.gen.alex_deg - self.u.total_deg() as isize
     }
 }
 
@@ -205,8 +205,8 @@ mod tests {
         // U_0^2 * U_1^1 has total_deg = 3
         let u = MultiVar::<'U', usize>::from([2usize, 1]);
         let t = GCInfGen::new(gen, u);
-        assert_eq!(t.maslov_deg(), 4 - 2 * 3);   // -2
-        assert_eq!(t.alexander_deg(), 2 - 3);     // -1
+        assert_eq!(t.maslov_deg(), 4 - 2 * 3);  // -2
+        assert_eq!(t.alex_deg(), 2 - 3);        // -1
     }
 
     #[test]

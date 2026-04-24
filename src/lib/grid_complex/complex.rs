@@ -144,7 +144,7 @@ impl GridComplex<GCTilde> {
     }
 
     pub fn genus(gd: &GridDiagram) -> usize { 
-        let cx = GridComplex::<GCTilde>::new_filtered(gd.clone(), |x| x.alexander_deg > 0);
+        let cx = GridComplex::<GCTilde>::new_filtered(gd.clone(), |x| x.alex_deg > 0);
         let m_range = cx.maslov_deg_range();
         let a_range = cx.alex_deg_range();
 
@@ -164,7 +164,7 @@ impl GridComplex<GCTilde> {
     pub fn hfk(gd: &GridDiagram) -> Grid2<usize> { 
         let n = gd.grid_number();
 
-        let cx = GridComplex::<GCTilde>::new_filtered(gd.clone(), |x| x.alexander_deg >= 0);
+        let cx = GridComplex::<GCTilde>::new_filtered(gd.clone(), |x| x.alex_deg >= 0);
         let m_range = cx.maslov_deg_range();
         let a_range = cx.alex_deg_range();
         let h = cx.into_homology();
@@ -287,7 +287,7 @@ mod tests {
     #[test]
     fn test_tilde_trefoil_filtered() {
         let gd = GridDiagram::trefoil();
-        let cx = GridComplex::<GCTilde>::new_filtered(gd, |x| x.alexander_deg >= 0);
+        let cx = GridComplex::<GCTilde>::new_filtered(gd, |x| x.alex_deg >= 0);
 
         assert_eq!(cx.grid_number(), 5);
         assert_eq!(cx.gens.len(), 6);
