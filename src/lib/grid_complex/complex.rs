@@ -270,6 +270,21 @@ mod tests {
     }
 
     #[test]
+    fn test_tilde_trefoil_mirror() {
+        let gd = GridDiagram::trefoil().rotate90();
+        let cx = GridComplex::<GCTilde>::new(gd);
+
+        let h = cx.into_homology();
+        assert_eq!(h[(2, 1)].rank(), 1);
+        assert_eq!(h[(1, 0)].rank(), 5);
+        assert_eq!(h[(0, -1)].rank(), 11);
+        assert_eq!(h[(-1, -2)].rank(), 14);
+        assert_eq!(h[(-2, -3)].rank(), 11);
+        assert_eq!(h[(-3, -4)].rank(), 5);
+        assert_eq!(h[(-4, -5)].rank(), 1);
+    }
+
+    #[test]
     fn test_tilde_trefoil_filtered() {
         let gd = GridDiagram::trefoil();
         let cx = GridComplex::<GCTilde>::new_filtered(gd, |x| x.alexander_deg >= 0);
@@ -324,6 +339,15 @@ mod tests {
         assert_eq!(h[(0, 1)], 1);
         assert_eq!(h[(-1, 0)], 1);
         assert_eq!(h[(-2, -1)], 1);
+    }
+
+    #[test]
+    fn test_hfk_trefoil_mirror() {
+        let gd = GridDiagram::trefoil().rotate90();
+        let h = GridComplex::<GCTilde>::hfk(&gd);
+        assert_eq!(h[(2, 1)], 1);
+        assert_eq!(h[(1, 0)], 1);
+        assert_eq!(h[(0, -1)], 1);
     }
 
     #[test]
