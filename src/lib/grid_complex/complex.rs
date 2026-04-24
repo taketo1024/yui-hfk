@@ -53,6 +53,16 @@ impl GCType for GCFiltered {
     fn nvars(n: u8) -> usize { n as usize }
 }
 
+pub trait GCBigradedType: GCType {}
+impl GCBigradedType for GCTilde {}
+impl GCBigradedType for GCHat {}
+impl GCBigradedType for GCMinus {}
+
+pub trait GCInfType: GCType {}
+impl GCInfType for GCHat {}
+impl GCInfType for GCMinus {}
+impl GCInfType for GCFiltered {}
+
 pub struct GridComplex<V: GCType> {
     pub diagram: GridDiagram,
     pub gens: GCGenSet,
@@ -256,11 +266,6 @@ impl GridComplex<GCTilde> {
     }
 }
 
-pub trait GCInfType: GCType {}
-impl GCInfType for GCHat {}
-impl GCInfType for GCMinus {}
-impl GCInfType for GCFiltered {}
-
 impl<V: GCInfType> GridComplex<V> {
     pub fn differentiate(&self, z: &Lc<GCInfGen, FF2>) -> Lc<GCInfGen, FF2> {
         let n = V::nvars(self.grid_number());
@@ -280,6 +285,27 @@ impl<V: GCInfType> GridComplex<V> {
             });
             Some(dx)
         }).flatten().collect()
+    }
+}
+
+impl<V: GCBigradedType + GCInfType + Send + Sync + 'static> GridComplex<V> {
+    pub fn into_complex(self) -> ChainComplex2<GCInfGen, FF2> {
+        let support: Vec<isize2> = self.gens.alex_deg_range().rev().flat_map(|j|
+            self.gens.maslov_deg_range().rev().map(move |i| isize2(i, j))
+        ).collect();
+
+        let this = &self;
+        let summands = Grid::generate(support, move |idx| {
+            Summand::from_raw_gens(this.inf_gens(idx.0, idx.1))
+        });
+
+        ChainComplex2::new(summands, isize2(-1, 0), move |_, z| {
+            self.differentiate(z)
+        })
+    }
+
+    pub fn into_homology(self) -> Homology2<GCInfGen, FF2> {
+        self.into_complex().reduced().homology()
     }
 }
 
@@ -504,5 +530,55 @@ mod tests {
                 assert!(ddz.is_zero());
             }
         }
+    }
+
+    // -- GCHat tests --
+
+    #[test]
+    fn test_hat_unknot() {
+        let gd = GridDiagram::unknot();
+        let h = GridComplex::<GCHat>::new(gd).into_homology();
+        assert_eq!(h[(0, 0)].rank(), 1);
+    }
+
+    #[test]
+    fn test_hat_unknot_twist() {
+        let gd = GridDiagram::from_arc_presentation(&[1,2,3,1,2,3]);
+        let h = GridComplex::<GCHat>::new(gd).into_homology();
+        assert_eq!(h[(0, 0)].rank(), 1);
+    }
+
+    #[test]
+    fn test_hat_trefoil() {
+        let gd = GridDiagram::trefoil();
+        let h = GridComplex::<GCHat>::new(gd).into_homology();
+        assert_eq!(h[(0, 1)].rank(), 1);
+        assert_eq!(h[(-1, 0)].rank(), 1);
+        assert_eq!(h[(-2, -1)].rank(), 1);
+    }
+
+    #[test]
+    fn test_hat_trefoil_mirror() {
+        let gd = GridDiagram::trefoil().rotate90();
+        let h = GridComplex::<GCHat>::new(gd).into_homology();
+        assert_eq!(h[(2, 1)].rank(), 1);
+        assert_eq!(h[(1, 0)].rank(), 1);
+        assert_eq!(h[(0, -1)].rank(), 1);
+    }
+
+    // -- GCMinus tests --
+
+    #[test]
+    fn test_minus_unknot() {
+        let gd = GridDiagram::unknot();
+        let h = GridComplex::<GCMinus>::new(gd).into_homology();
+        assert_eq!(h[(0, 0)].rank(), 1);
+    }
+
+    #[test]
+    fn test_minus_trefoil() {
+        let gd = GridDiagram::trefoil();
+        let h = GridComplex::<GCMinus>::new(gd).into_homology();
+        assert_eq!(h[(0, 1)].rank(), 1);
     }
 }
