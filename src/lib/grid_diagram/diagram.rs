@@ -121,8 +121,23 @@ impl GridDiagram {
         GridDiagram::from_sequences(&[2,1,0,4,3], &[4,3,2,1,0])
     }
 
-    pub fn figure8() -> GridDiagram { 
+    pub fn figure8() -> GridDiagram {
         GridDiagram::from_sequences(&[3,5,0,2,1,4], &[0,1,4,5,3,2])
+    }
+
+    /// Rotate the diagram 90 degrees counter-clockwise.
+    /// Each point (x, y) maps to (size - y, x), then Os and Xs are re-sorted by x.
+    pub fn rotate90(&self) -> GridDiagram {
+        let size = self.size;
+        let transform = |p: &GridPoint| GridPoint::new(size - p.y, p.x);
+
+        let mut os: Vec<GridPoint> = self.os.iter().map(transform).collect();
+        let mut xs: Vec<GridPoint> = self.xs.iter().map(transform).collect();
+
+        os.sort_by_key(|p| p.x);
+        xs.sort_by_key(|p| p.x);
+
+        GridDiagram::new(os, xs, size)
     }
 
     // ============ Degree computation (Section 4.1 of arXiv:2002.09210) ============
