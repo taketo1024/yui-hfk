@@ -94,7 +94,9 @@ impl PartialOrd for GCGen {
 
 impl Ord for GCGen {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.code.cmp(&other.code)
+        self.alex_deg.cmp(&other.alex_deg)
+            .then_with(|| self.maslov_deg.cmp(&other.maslov_deg))
+            .then_with(|| self.code.cmp(&other.code))
     }
 }
 
