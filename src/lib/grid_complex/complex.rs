@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::ops::RangeInclusive;
 use num_integer::binomial;
-use num_traits::Zero;
+use num_traits::{One, Zero};
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
 use yui_homology::{ChainComplex2, Grid, Grid2, Homology2, Summand, SummandTrait, isize2};
@@ -116,7 +116,7 @@ impl<V: GCType> GridComplex<V> {
         result.into_iter()
     }
 
-    fn differentiate_gen(&self, x: &GCGen) -> Lc<GCGen, FF2> {
+    fn differentiate_gen(&self, x: &GCGen) -> Vec<(GCGen, GridRect)> {
         use itertools::Itertools;
 
         let n = self.grid_number();
@@ -124,7 +124,7 @@ impl<V: GCType> GridComplex<V> {
         let pts = x.points();
 
         let mut seq = x.sequence();
-        let mut result = Lc::new();
+        let mut result = Vec::new();
 
         for (i, j) in (0..n as usize).tuple_combinations() {
             for &(p, q) in &[(pts[i], pts[j]), (pts[j], pts[i])] {
@@ -145,22 +145,23 @@ impl<V: GCType> GridComplex<V> {
                 seq.swap(ri as usize, rj as usize);
 
                 if let Some(y) = y {
-                    result += Lc::from(y.clone());
+                    result.push((y.clone(), rect));
                 }
             }
         }
-
         result
     }
 }
 
 impl GridComplex<GCTilde> {
-    fn differentiate(&self, x: &Lc<GCGen, FF2>) -> Lc<GCGen, FF2> {
-        let mut result = Lc::new();
-        for (gen, _) in x.iter() {
-            result += self.differentiate_gen(gen);
-        }
-        result
+    fn differentiate(&self, z: &Lc<GCGen, FF2>) -> Lc<GCGen, FF2> {
+        z.iter().filter_map(|(x, r)| {
+            if r.is_zero() { return None }
+            let dx = self.differentiate_gen(x).into_iter().map(|(y, _)| 
+                (y, FF2::one())
+            );
+            Some(dx)
+        }).flatten().collect()
     }
 
     pub fn into_complex(self) -> ChainComplex2<GCGen, FF2> {
@@ -252,6 +253,33 @@ impl GridComplex<GCTilde> {
             ranks.keys().map(|&(i, j)| isize2(i, j)),
             |isize2(i, j)| ranks[&(i, j)]
         )
+    }
+}
+
+pub trait GCInfType: GCType {}
+impl GCInfType for GCHat {}
+impl GCInfType for GCMinus {}
+impl GCInfType for GCFiltered {}
+
+impl<V: GCInfType> GridComplex<V> {
+    pub fn differentiate(&self, z: &Lc<GCInfGen, FF2>) -> Lc<GCInfGen, FF2> {
+        let n = V::nvars(self.grid_number());
+        let grid_size = 2 * self.grid_number();
+        let os = &self.diagram.os;
+
+        z.iter().filter_map(|(t, r)| {
+            if r.is_zero() { return None }
+            let dx = self.differentiate_gen(&t.gen).into_iter().map(|(y, rect)| {
+                // U_k appears in the differential if Os[k] is inside the rect.
+                let v = MultiVar::from_iter(
+                    (0..n).filter_map(|k| 
+                        rect.contains(os[k], grid_size, false).then_some((k, 1))
+                    )
+                );
+                (GCInfGen::new(y, &t.u * v), FF2::one())
+            });
+            Some(dx)
+        }).flatten().collect()
     }
 }
 
@@ -392,6 +420,15 @@ mod tests {
     }
 
     #[test]
+    fn test_hfk_4_1() {
+        let gd = GridDiagram::figure8();
+        let h = GridComplex::<GCTilde>::hfk(&gd);
+        assert_eq!(h[(1, 1)], 1);
+        assert_eq!(h[(0, 0)], 3);
+        assert_eq!(h[(-1, -1)], 1);
+    }
+    
+    #[test]
     fn test_inf_gens_tilde() {
         // GCTilde has nvars = 0, so inf_gens(i, j) wraps raw_gens(i, j) with the unit monomial.
         let gd = GridDiagram::unknot();
@@ -432,11 +469,40 @@ mod tests {
     }
 
     #[test]
-    fn test_hfk_4_1() {
-        let gd = GridDiagram::figure8();
-        let h = GridComplex::<GCTilde>::hfk(&gd);
-        assert_eq!(h[(1, 1)], 1);
-        assert_eq!(h[(0, 0)], 3);
-        assert_eq!(h[(-1, -1)], 1);
+    fn test_differentiate_hat_unknot() {
+        let gd = GridDiagram::unknot();
+        let cx = GridComplex::<GCHat>::new(gd);
+
+        for (i, j) in [(0isize, 0isize), (-1, -1), (-2, -1)] {
+            for t in cx.inf_gens(i, j) {
+                let dz = cx.differentiate(&Lc::from(t));
+                for (s, _) in dz.iter() {
+                    assert_eq!(s.maslov_deg(), i - 1);
+                    assert_eq!(s.alex_deg(), j);
+                }
+                let ddz = cx.differentiate(&dz);
+                assert!(ddz.is_zero());
+            }
+        }
+    }
+
+    #[test]
+    fn test_differentiate_minus_unknot() {
+        let gd = GridDiagram::unknot();
+        let cx = GridComplex::<GCMinus>::new(gd);
+
+        // Check degree preservation and d² = 0 at several bidegrees.
+        // Includes generators with non-trivial U-monomials (e.g. at (-2,-1), (-3,-2)).
+        for (i, j) in [(0isize, 0isize), (-1, -1), (-2, -1), (-3, -2)] {
+            for t in cx.inf_gens(i, j) {
+                let dz = cx.differentiate(&Lc::from(t));
+                for (s, _) in dz.iter() {
+                    assert_eq!(s.maslov_deg(), i - 1,);
+                    assert_eq!(s.alex_deg(), j);
+                }
+                let ddz = cx.differentiate(&dz);
+                assert!(ddz.is_zero());
+            }
+        }
     }
 }
