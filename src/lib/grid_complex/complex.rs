@@ -5,7 +5,7 @@ use num_integer::binomial;
 use num_traits::{One, Zero};
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
-use yui_homology::{ChainComplex2, Grid, Grid2, Homology2, Summand, SummandTrait, isize2};
+use yui_homology::{ChainComplex2, Grid, Grid2, Homology2, Summand, SummandTrait, isize2, range_of};
 use yui_core::poly::MultiVar;
 use crate::grid_complex::r#gen::GCInfGen;
 use crate::grid_diagram::{GridDiagram, GridRect};
@@ -288,10 +288,17 @@ impl<V: GCInfType> GridComplex<V> {
     }
 }
 
+// Implementation for GCHat and GCMinus.
 impl<V: GCBigradedType + GCInfType + Send + Sync + 'static> GridComplex<V> {
     pub fn into_complex(self) -> ChainComplex2<GCInfGen, FF2> {
-        let support: Vec<isize2> = self.gens.alex_deg_range().rev().flat_map(|j|
-            self.gens.maslov_deg_range().rev().map(move |i| isize2(i, j))
+        let a_range = self.gens.alex_deg_range();
+        let a_min = *a_range.start();
+        let m_range = range_of(self.gens.iter().flat_map(|x| 
+            [x.maslov_deg - 2 * (x.alex_deg - a_min), x.maslov_deg]
+        ));
+
+        let support: Vec<isize2> = a_range.rev().flat_map(|j|
+            m_range.clone().rev().map(move |i| isize2(i, j))
         ).collect();
 
         let this = &self;
@@ -539,6 +546,7 @@ mod tests {
         let gd = GridDiagram::unknot();
         let h = GridComplex::<GCHat>::new(gd).into_homology();
         assert_eq!(h[(0, 0)].rank(), 1);
+        assert_eq!(h.total_rank(), 1);
     }
 
     #[test]
@@ -546,6 +554,7 @@ mod tests {
         let gd = GridDiagram::from_arc_presentation(&[1,2,3,1,2,3]);
         let h = GridComplex::<GCHat>::new(gd).into_homology();
         assert_eq!(h[(0, 0)].rank(), 1);
+        assert_eq!(h.total_rank(), 1);
     }
 
     #[test]
@@ -555,6 +564,7 @@ mod tests {
         assert_eq!(h[(0, 1)].rank(), 1);
         assert_eq!(h[(-1, 0)].rank(), 1);
         assert_eq!(h[(-2, -1)].rank(), 1);
+        assert_eq!(h.total_rank(), 3);
     }
 
     #[test]
@@ -564,6 +574,7 @@ mod tests {
         assert_eq!(h[(2, 1)].rank(), 1);
         assert_eq!(h[(1, 0)].rank(), 1);
         assert_eq!(h[(0, -1)].rank(), 1);
+        assert_eq!(h.total_rank(), 3);
     }
 
     // -- GCMinus tests --
@@ -571,14 +582,19 @@ mod tests {
     #[test]
     fn test_minus_unknot() {
         let gd = GridDiagram::unknot();
-        let h = GridComplex::<GCMinus>::new(gd).into_homology();
+        let h = GridComplex::<GCMinus>::new_filtered(gd, |x| x.alex_deg >= -2).into_homology();
         assert_eq!(h[(0, 0)].rank(), 1);
+        assert_eq!(h[(-2, -1)].rank(), 1);
+        assert_eq!(h.total_rank(), 2);
     }
 
     #[test]
     fn test_minus_trefoil() {
         let gd = GridDiagram::trefoil();
-        let h = GridComplex::<GCMinus>::new(gd).into_homology();
+        let h = GridComplex::<GCMinus>::new_filtered(gd, |x| x.alex_deg >= -2).into_homology();
         assert_eq!(h[(0, 1)].rank(), 1);
+        assert_eq!(h[(-2, -1)].rank(), 1);
+        assert_eq!(h[(-4, -2)].rank(), 1);
+        assert_eq!(h.total_rank(), 3);
     }
 }
