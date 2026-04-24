@@ -9,6 +9,10 @@ edition = "2021"
 [lib]
 path = "src/lib/lib.rs"
 
+[[bin]]
+name = "yhf"
+path = "src/bin/main.rs"
+
 [features]
 default = ["multithread"]
 multithread = ["rayon"]
