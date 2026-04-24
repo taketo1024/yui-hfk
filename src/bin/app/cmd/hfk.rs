@@ -1,4 +1,4 @@
-use yui_hfk::{GridComplex, GCTilde};
+use yui_hfk::{GCTilde, GridComplex, HFK};
 use yui_homology::DisplayTable;
 use crate::app::{AppArgs, utils::load_diagram};
 
@@ -21,8 +21,8 @@ impl AppArgs for Args {
 }
 
 pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
-    let d = load_diagram(&args.knot)?;
-    let d = if args.mirror { d.rotate90() } else { d };
-    let h = GridComplex::<GCTilde>::hfk(&d);
+    let gd= load_diagram(&args.knot)?;
+    let gd = if args.mirror { gd.rotate90() } else { gd };
+    let h = HFK::from(&gd);
     Ok(h.display_table("M", "A"))
 }
