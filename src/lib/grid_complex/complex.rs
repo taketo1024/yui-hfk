@@ -259,9 +259,13 @@ impl GridComplex<GCTilde> {
             }
         }
 
+        let m_range = range_of(ranks.keys().map(|&(i, _)| i));
+        let a_range = range_of(ranks.keys().map(|&(_, j)| j));
+        let support = m_range.flat_map(|i| a_range.clone().map(move |j| isize2(i, j)));
+
         Grid2::generate(
-            ranks.keys().map(|&(i, j)| isize2(i, j)),
-            |isize2(i, j)| ranks[&(i, j)]
+            support,
+            |isize2(i, j)| *ranks.get(&(i, j)).unwrap_or(&0)
         )
     }
 }
