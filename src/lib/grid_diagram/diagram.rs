@@ -13,7 +13,7 @@ use std::path::Path;
 /// one in each row and column. The O and X positions determine the knot topology.
 ///
 /// See arXiv:2002.09210 Section 4.1 for mathematical details.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GridDiagram {
     pub os: Vec<GridPoint>,
     pub xs: Vec<GridPoint>,
@@ -76,8 +76,28 @@ impl GridDiagram {
         GridDiagram::new(os, xs, size)
     }
 
+    /// Load a grid diagram by knot name (e.g. `"3_1"`) or by file path.
+    /// Named knots are looked up in `resources/` relative to the crate root.
+    pub fn load(name_or_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        const RESOURCE_DIR: &str = "resources/";
+        let path = if Self::is_valid_name(name_or_path) {
+            let dir = std::env!("CARGO_MANIFEST_DIR");
+            format!("{dir}/{RESOURCE_DIR}{name_or_path}.json")
+        } else {
+            name_or_path.to_string()
+        };
+        Self::load_json(path)
+    }
+
+    fn is_valid_name(s: &str) -> bool {
+        // matches names like "0_1", "3_1", "10_165"
+        let mut parts = s.splitn(2, '_');
+        let a = parts.next().map(|p| p.parse::<u32>().is_ok()).unwrap_or(false);
+        let b = parts.next().map(|p| p.parse::<u32>().is_ok()).unwrap_or(false);
+        a && b
+    }
+
     /// Load a grid diagram from a JSON file.
-    ///
     /// Expected format: `{"O": [u8, ...], "X": [u8, ...]}`
     pub fn load_json(path: impl AsRef<Path>) -> Result<Self, Box<dyn std::error::Error>> {
         let json_str = fs::read_to_string(path)?;
@@ -313,5 +333,17 @@ mod tests {
 
         // J should be symmetric by definition
         assert_eq!(j12, j21);
+    }
+
+    #[test]
+    fn test_load() {
+        let g = GridDiagram::load("3_1").unwrap();
+        assert_eq!(g.grid_number(), 5);
+        assert_eq!(g, GridDiagram::trefoil());
+    }
+
+    #[test]
+    fn test_load_invalid_name_treated_as_path() {
+        assert!(GridDiagram::load("not_a_real_file.json").is_err());
     }
 }
