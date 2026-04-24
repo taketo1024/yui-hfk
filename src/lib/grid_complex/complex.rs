@@ -5,7 +5,7 @@ use num_integer::binomial;
 use num_traits::Zero;
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
-use yui_homology::{ChainComplex2, Grid, Grid2, Homology2, Summand, SummandTrait, isize2, range_of};
+use yui_homology::{ChainComplex2, Grid, Grid2, Homology2, Summand, SummandTrait, isize2};
 use crate::grid_diagram::{GridDiagram, GridRect};
 use super::gen::GCGen;
 use super::gen_table::GCGenSet;
@@ -67,11 +67,11 @@ impl<V: GCType> GridComplex<V> {
     }
 
     pub fn maslov_deg_range(&self) -> RangeInclusive<isize> { 
-        range_of(self.gens.support().map(|(i, _)| i))
+        self.gens.maslov_deg_range()
     }
 
     pub fn alex_deg_range(&self) -> RangeInclusive<isize> { 
-        range_of(self.gens.support().map(|(_, j)| j))
+        self.gens.alex_deg_range()
     }
 
     fn differentiate_gen(&self, x: &GCGen) -> Lc<GCGen, FF2> {
@@ -122,12 +122,11 @@ impl GridComplex<GCTilde> {
     }
 
     pub fn into_complex(self) -> ChainComplex2<GCGen, FF2> {
+        let support: Vec<isize2> = self.gens.alex_deg_range().rev().flat_map(|j| 
+            self.gens.maslov_deg_range().rev().map(move |i| isize2(i, j))
+        ).collect();
+
         let this = &self;
-
-        let support: Vec<isize2> = this.gens.support()
-            .map(|(m, a)| isize2(m, a))
-            .collect();
-
         let summands = {
             Grid::generate(support, move |idx| {
                 let gens = this.gens.gens_of_degree(idx.0, idx.1).cloned();

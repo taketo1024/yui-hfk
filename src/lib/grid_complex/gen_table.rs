@@ -1,4 +1,7 @@
+use std::ops::RangeInclusive;
+
 use ahash::AHashSet;
+use yui_homology::range_of;
 use crate::grid_diagram::{GridDiagram, GridPoint, GridRect};
 use crate::misc::heap::heap_transpositions;
 use super::gen::GCGen;
@@ -90,12 +93,12 @@ impl GCGenSet {
         self.inner.iter().filter(move |g| g.maslov_deg == m && g.alexander_deg == a)
     }
 
-    pub fn support(&self) -> impl Iterator<Item = (isize, isize)> {
-        let mut degs: AHashSet<(isize, isize)> = AHashSet::new();
-        for g in &self.inner {
-            degs.insert((g.maslov_deg, g.alexander_deg));
-        }
-        degs.into_iter()
+    pub fn maslov_deg_range(&self) -> RangeInclusive<isize> { 
+        range_of(self.iter().map(|x| x.maslov_deg))
+    }
+
+    pub fn alex_deg_range(&self) -> RangeInclusive<isize> { 
+        range_of(self.iter().map(|x| x.alexander_deg))
     }
 }
 
