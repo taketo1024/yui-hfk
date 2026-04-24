@@ -1,11 +1,9 @@
-use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::ops::RangeInclusive;
-use num_integer::binomial;
 use num_traits::{One, Zero};
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
-use yui_homology::{ChainComplex2, Grid, Grid2, Homology2, Summand, SummandTrait, isize2, range_of};
+use yui_homology::{ChainComplex2, Grid, Homology2, Summand, SummandTrait, isize2, range_of};
 use yui_core::poly::MultiVar;
 use crate::grid_complex::r#gen::GCInfGen;
 use crate::grid_diagram::{GridDiagram, GridRect};
@@ -210,64 +208,6 @@ impl GridComplex<GCTilde> {
         }
         0
     }
-
-    /// Computed from tilde-GC. 
-    /// H(tilde-GC(K)) = HFK(K) ⊗ W^(n - 1)
-    pub fn hfk(gd: &GridDiagram) -> Grid2<usize> { 
-        let n = gd.grid_number();
-
-        let cx = GridComplex::<GCTilde>::new_filtered(gd.clone(), |x| x.alex_deg >= 0);
-        let m_range = cx.maslov_deg_range();
-        let a_range = cx.alex_deg_range();
-        let h = cx.into_homology();
-
-        let mut ranks: HashMap<(isize, isize), usize> = HashMap::new();
-
-        for j in a_range.clone() { 
-            for i in m_range.clone() { 
-                if !h[(i, j)].is_zero() { 
-                    ranks.insert((i, j), h[(i, j)].rank());
-                }
-            }
-        }
-
-        // divide by W^(n - 1).
-        for j in a_range.clone().rev() { 
-            for i in m_range.clone() { 
-                let Some(&r) = ranks.get(&(i, j)) else { continue };
-                if r.is_zero() { continue }
-
-                for k in 1 .. n { 
-                    let k = k as isize;
-                    if k > j { break }
-                    
-                    let t = ranks.get_mut(&(i - k, j - k)).unwrap();
-                    *t -= r * binomial(n - 1, k as u8) as usize;
-                }
-            }
-        }
-
-        ranks.retain(|_, r| *r > 0);
-
-        // use symmetry: HFK_{i, j}(K) = HFK_{i - 2j, -j}(K)
-        for j in a_range.clone().rev() { 
-            if j == 0 { break }
-
-            for i in m_range.clone() { 
-                let Some(r) = ranks.get(&(i, j)) else { continue };
-                ranks.insert((i - 2 * j, -j), *r);
-            }
-        }
-
-        let m_range = range_of(ranks.keys().map(|&(i, _)| i));
-        let a_range = range_of(ranks.keys().map(|&(_, j)| j));
-        let support = m_range.flat_map(|i| a_range.clone().map(move |j| isize2(i, j)));
-
-        Grid2::generate(
-            support,
-            |isize2(i, j)| *ranks.get(&(i, j)).unwrap_or(&0)
-        )
-    }
 }
 
 impl<V: GCInfType> GridComplex<V> {
@@ -431,40 +371,6 @@ mod tests {
         assert_eq!(g, 2);
     }
 
-    #[test]
-    fn test_hfk_unknot() {
-        let gd = GridDiagram::unknot();
-        let h = GridComplex::<GCTilde>::hfk(&gd);
-        assert_eq!(h[(0, 0)], 1);
-    }
-
-    #[test]
-    fn test_hfk_trefoil() {
-        let gd = GridDiagram::trefoil();
-        let h = GridComplex::<GCTilde>::hfk(&gd);
-        assert_eq!(h[(0, 1)], 1);
-        assert_eq!(h[(-1, 0)], 1);
-        assert_eq!(h[(-2, -1)], 1);
-    }
-
-    #[test]
-    fn test_hfk_trefoil_mirror() {
-        let gd = GridDiagram::trefoil().rotate90();
-        let h = GridComplex::<GCTilde>::hfk(&gd);
-        assert_eq!(h[(2, 1)], 1);
-        assert_eq!(h[(1, 0)], 1);
-        assert_eq!(h[(0, -1)], 1);
-    }
-
-    #[test]
-    fn test_hfk_4_1() {
-        let gd = GridDiagram::figure8();
-        let h = GridComplex::<GCTilde>::hfk(&gd);
-        assert_eq!(h[(1, 1)], 1);
-        assert_eq!(h[(0, 0)], 3);
-        assert_eq!(h[(-1, -1)], 1);
-    }
-    
     #[test]
     fn test_inf_gens_tilde() {
         // GCTilde has nvars = 0, so inf_gens(i, j) wraps raw_gens(i, j) with the unit monomial.
