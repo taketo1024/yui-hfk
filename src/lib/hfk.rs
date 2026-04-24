@@ -114,6 +114,20 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_genus() {
+        let h = HFK::from_iter([(isize2(0, 1), 1), (isize2(0, -1), 1), (isize2(2, 0), 1)]);
+        assert_eq!(h.genus(), 1);
+    }
+
+    #[test]
+    fn test_mirror() {
+        let h = HFK::from_iter([(isize2(2, 1), 1)]);
+        let m = h.mirror();
+        assert_eq!(m[(-2, -1)], 1);
+        assert_eq!(m[(2, 1)], 0);
+    }
+
+    #[test]
     fn test_hfk_unknot() {
         let gd = GridDiagram::unknot();
         let h = HFK::from(&gd);
