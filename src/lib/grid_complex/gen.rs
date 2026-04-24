@@ -1,4 +1,5 @@
 use std::fmt;
+use yui_core::poly::MultiVar;
 use yui_core::{Elem, lc::Gen};
 use crate::grid_diagram::{GridDiagram, GridPoint, point::even_points};
 
@@ -111,6 +112,52 @@ impl Elem for GCGen {
 
 impl Gen for GCGen {}
 
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct GCInfGen {
+    pub u: MultiVar<'U', usize>,
+    pub gen: GCGen,
+}
+
+impl GCInfGen {
+    pub fn new(gen: GCGen, u: MultiVar<'U', usize>) -> Self {
+        GCInfGen { u, gen }
+    }
+
+    pub fn maslov_deg(&self) -> isize {
+        self.gen.maslov_deg - 2 * self.u.total_deg() as isize
+    }
+
+    pub fn alexander_deg(&self) -> isize {
+        self.gen.alexander_deg - self.u.total_deg() as isize
+    }
+}
+
+impl PartialOrd for GCInfGen {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for GCInfGen {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.gen.cmp(&other.gen).then_with(|| self.u.cmp(&other.u))
+    }
+}
+
+impl fmt::Display for GCInfGen {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} ⊗ {}", self.u, self.gen)
+    }
+}
+
+impl Elem for GCInfGen {
+    fn math_symbol() -> String {
+        String::from("GCInfGen")
+    }
+}
+
+impl Gen for GCInfGen {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -150,6 +197,16 @@ mod tests {
         let g0 = GCGen::from_raw(0, 3, 0, 0);
         let g1 = GCGen::from_raw(1, 3, 0, 0);
         assert!(g0 < g1);
+    }
+
+    #[test]
+    fn test_inf_gen_degrees() {
+        let gen = GCGen::from_raw(0, 3, 4, 2);
+        // U_0^2 * U_1^1 has total_deg = 3
+        let u = MultiVar::<'U', usize>::from([2usize, 1]);
+        let t = GCInfGen::new(gen, u);
+        assert_eq!(t.maslov_deg(), 4 - 2 * 3);   // -2
+        assert_eq!(t.alexander_deg(), 2 - 3);     // -1
     }
 
     #[test]
