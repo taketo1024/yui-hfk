@@ -121,6 +121,10 @@ impl GridDiagram {
         GridDiagram::from_sequences(&[2,1,0,4,3], &[4,3,2,1,0])
     }
 
+    pub fn figure8() -> GridDiagram { 
+        GridDiagram::from_sequences(&[3,5,0,2,1,4], &[0,1,4,5,3,2])
+    }
+
     // ============ Degree computation (Section 4.1 of arXiv:2002.09210) ============
 
     /// Count pairs (p, q) ∈ x × y where p strictly dominates q.
