@@ -1,5 +1,4 @@
-use yui_hfk::{GCTilde, GridComplex, HFK};
-use yui_homology::DisplayTable;
+use yui_hfk::HFK;
 use crate::app::{AppArgs, utils::load_diagram};
 
 #[derive(Clone, Debug, clap::Args)]
