@@ -6,12 +6,15 @@ use num_traits::Zero;
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
 use yui_homology::{ChainComplex2, Grid, Grid2, Homology2, Summand, SummandTrait, isize2};
+use yui_core::poly::MultiVar;
+use crate::grid_complex::r#gen::GCInfGen;
 use crate::grid_diagram::{GridDiagram, GridRect};
 use super::gen::GCGen;
 use super::gen_table::GCGenSet;
 
 pub trait GCType {
     fn is_admissible(rect: &GridRect, diagram: &GridDiagram, grid_size: u8) -> bool;
+    fn nvars(grid_number: u8) -> usize;
 }
 
 pub struct GCTilde;     // [Book] p.72,  Def 4.4.1
@@ -24,6 +27,7 @@ impl GCType for GCTilde {
         !rect.intersects(&diagram.os, grid_size, false) &&
         !rect.intersects(&diagram.xs, grid_size, false)
     }
+    fn nvars(_: u8) -> usize { 0 }
 }
 
 impl GCType for GCHat {
@@ -32,18 +36,21 @@ impl GCType for GCHat {
         !rect.intersects(&diagram.xs, grid_size, false) &&
         !rect.contains(diagram.os[n - 1], grid_size, false)
     }
+    fn nvars(n: u8) -> usize { (n - 1) as usize }
 }
 
 impl GCType for GCMinus {
     fn is_admissible(rect: &GridRect, diagram: &GridDiagram, grid_size: u8) -> bool {
         !rect.intersects(&diagram.xs, grid_size, false)
     }
+    fn nvars(n: u8) -> usize { n as usize }
 }
 
 impl GCType for GCFiltered {
     fn is_admissible(_rect: &GridRect, _diagram: &GridDiagram, _grid_size: u8) -> bool {
         true
     }
+    fn nvars(n: u8) -> usize { n as usize }
 }
 
 pub struct GridComplex<V: GCType> {
@@ -76,6 +83,37 @@ impl<V: GCType> GridComplex<V> {
 
     fn raw_gens(&self, i: isize, j: isize) -> impl Iterator<Item = &GCGen> {
         self.gens.iter().filter(move |g| g.maslov_deg == i && g.alex_deg == j)
+    }
+
+    fn inf_gens(&self, i: isize, j: isize) -> impl Iterator<Item = GCInfGen> {
+        use itertools::Itertools;
+
+        let n = V::nvars(self.grid_number());
+        let i_max = *self.gens.maslov_deg_range().end();
+        let max_e = if i <= i_max { (i_max - i) as usize / 2 } else { 0 };
+
+        // For each e, collect raw gens at (i + 2e, j + e) tensored with
+        // all monomials of total degree e in n variables.
+        //
+        //              * x ... (i + 2e, j + e)
+        //              |
+        //              | e
+        //        2e    |
+        //  * ----------
+        //  U^e ⊗ x ... (i, j)
+
+        let mut result = Vec::new();
+        for e in 0..=max_e {
+            for x in self.raw_gens(i + 2 * e as isize, j + e as isize) {
+                for combo in (0..n).combinations_with_replacement(e) {
+                    let u = MultiVar::from_iter(
+                        (0..n).map(|k| (k, combo.iter().filter(|&&v| v == k).count()))
+                    );
+                    result.push(GCInfGen::new(x.clone(), u));
+                }
+            }
+        }
+        result.into_iter()
     }
 
     fn differentiate_gen(&self, x: &GCGen) -> Lc<GCGen, FF2> {
@@ -351,6 +389,46 @@ mod tests {
         assert_eq!(h[(2, 1)], 1);
         assert_eq!(h[(1, 0)], 1);
         assert_eq!(h[(0, -1)], 1);
+    }
+
+    #[test]
+    fn test_inf_gens_tilde() {
+        // GCTilde has nvars = 0, so inf_gens(i, j) wraps raw_gens(i, j) with the unit monomial.
+        let gd = GridDiagram::unknot();
+        let cx = GridComplex::<GCTilde>::new(gd);
+
+        let unit = MultiVar::<'U', usize>::default();
+
+        let gens_00: Vec<_> = cx.inf_gens(0, 0).collect();
+        assert_eq!(gens_00.len(), 1);
+        assert_eq!(gens_00[0].u, unit);
+
+        let gens_m1: Vec<_> = cx.inf_gens(-1, -1).collect();
+        assert_eq!(gens_m1.len(), 1);
+        assert_eq!(gens_m1[0].u, unit);
+
+        assert_eq!(cx.inf_gens(0, 1).count(), 0);
+    }
+
+    #[test]
+    fn test_inf_gens_minus() {
+        // GCMinus on unknot (n=2): nvars = 2, raw gens at (0,0) and (-1,-1).
+        let gd = GridDiagram::unknot();
+        let cx = GridComplex::<GCMinus>::new(gd);
+
+        // e=0 only: 1 raw gen × 1 monomial
+        assert_eq!(cx.inf_gens(0, 0).count(), 1);
+
+        // e=0: nothing at (-2,-1); e=1: 1 raw gen at (0,0) × 2 monomials (U_0, U_1)
+        let gens = cx.inf_gens(-2, -1);
+        let v: Vec<_> = gens.collect();
+        assert_eq!(v.len(), 2);
+        assert!(v.iter().all(|t| t.maslov_deg() == -2 && t.alex_deg() == -1));
+
+        // e=2: 1 raw gen at (0,0) × 3 monomials (U_0^2, U_0*U_1, U_1^2)
+        let v: Vec<_> = cx.inf_gens(-4, -2).collect();
+        assert_eq!(v.len(), 3);
+        assert!(v.iter().all(|t| t.maslov_deg() == -4 && t.alex_deg() == -2));
     }
 
     #[test]
