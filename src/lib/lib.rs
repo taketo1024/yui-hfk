@@ -7,6 +7,7 @@
 
 pub mod grid_diagram;
 pub mod grid_complex;
+pub mod g_zero;
 pub mod misc;
 
 pub use grid_diagram::{GridDiagram, GridPoint, GridRect};
