@@ -1,29 +1,29 @@
 use ahash::AHashSet;
 use crate::grid_diagram::{GridDiagram, GridPoint, GridRect};
 use crate::misc::heap::heap_transpositions;
-use super::gen::GridComplexGen;
+use super::gen::GCGen;
 
-pub struct GridComplexGenTable {
-    inner: AHashSet<GridComplexGen>,
+pub struct GCGenSet {
+    inner: AHashSet<GCGen>,
 }
 
-impl GridComplexGenTable {
+impl GCGenSet {
     fn new() -> Self {
-        GridComplexGenTable { inner: AHashSet::new() }
+        GCGenSet { inner: AHashSet::new() }
     }
 
     pub fn generate_from(diagram: &GridDiagram) -> Self { 
         Self::generate_filtered(diagram, |_| true)
     }
 
-    pub fn generate_filtered(diagram: &GridDiagram, pred: impl Fn(&GridComplexGen) -> bool) -> Self { 
+    pub fn generate_filtered(diagram: &GridDiagram, pred: impl Fn(&GCGen) -> bool) -> Self { 
         let n = diagram.grid_number();
         let size = 2 * n;
         let trans = heap_transpositions(n);
 
-        let mut result = GridComplexGenTable::new();
+        let mut result = GCGenSet::new();
         let mut seq: Vec<u8> = (0..n).collect();
-        let mut x = GridComplexGen::new(diagram, &seq);
+        let mut x = GCGen::new(diagram, &seq);
         let mut pts = x.points();
 
         if pred(&x) {
@@ -50,8 +50,8 @@ impl GridComplexGenTable {
             let m_deg = x.maslov_deg + 2 * (n_o - c) - 1;
             let a_deg = x.alexander_deg + n_o - n_x;
 
-            x = GridComplexGen::from_raw(
-                GridComplexGen::encode(&seq),
+            x = GCGen::from_raw(
+                GCGen::encode(&seq),
                 n,
                 m_deg,
                 a_deg
@@ -69,24 +69,24 @@ impl GridComplexGenTable {
         self.inner.len()
     }
 
-    pub fn insert(&mut self, x: GridComplexGen) {
+    pub fn insert(&mut self, x: GCGen) {
         self.inner.insert(x);
     }
 
-    pub fn contains(&self, x: &GridComplexGen) -> bool {
+    pub fn contains(&self, x: &GCGen) -> bool {
         self.inner.contains(x)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &GridComplexGen> {
+    pub fn iter(&self) -> impl Iterator<Item = &GCGen> {
         self.inner.iter()
     }
 
-    pub fn gen_from_seq(&self, seq: &[u8]) -> Option<&GridComplexGen> {
-        let code = GridComplexGen::encode(seq);
+    pub fn gen_from_seq(&self, seq: &[u8]) -> Option<&GCGen> {
+        let code = GCGen::encode(seq);
         self.inner.iter().find(|g| g.code == code)
     }
 
-    pub fn gens_of_degree(&self, m: isize, a: isize) -> impl Iterator<Item = &GridComplexGen> {
+    pub fn gens_of_degree(&self, m: isize, a: isize) -> impl Iterator<Item = &GCGen> {
         self.inner.iter().filter(move |g| g.maslov_deg == m && g.alexander_deg == a)
     }
 
@@ -107,7 +107,7 @@ mod tests {
     fn test_produce() {
         let diagram = GridDiagram::from_sequences(&[1, 2, 0], &[0, 1, 2]);
         let n = diagram.grid_number();
-        let table = GridComplexGenTable::generate_from(&diagram);
+        let table = GCGenSet::generate_from(&diagram);
 
         // 3x3 grid has 3! = 6 generators
         assert_eq!(table.iter().count(), 6);
@@ -115,12 +115,12 @@ mod tests {
         // Check all generators are produced correctly
         let mut seq: Vec<u8> = (0..n).collect();
 
-        let x = GridComplexGen::new(&diagram, &seq);
+        let x = GCGen::new(&diagram, &seq);
         assert!(table.contains(&x));
 
         for (i, j) in heap_transpositions(n) {
             seq.swap(i as usize, j as usize);
-            let x = GridComplexGen::new(&diagram, &seq);
+            let x = GCGen::new(&diagram, &seq);
             assert!(table.contains(&x));
         }
     }
@@ -128,7 +128,7 @@ mod tests {
     #[test]
     fn test_produce_trefoil() {
         let diagram = GridDiagram::trefoil();
-        let table = GridComplexGenTable::generate_from(&diagram);
+        let table = GCGenSet::generate_from(&diagram);
 
         let n = diagram.grid_number();
         assert_eq!(n, 5);
@@ -137,12 +137,12 @@ mod tests {
         // Check all generators are produced correctly
         let mut seq: Vec<u8> = (0..n).collect();
 
-        let x = GridComplexGen::new(&diagram, &seq);
+        let x = GCGen::new(&diagram, &seq);
         assert!(table.contains(&x));
 
         for (i, j) in heap_transpositions(n) {
             seq.swap(i as usize, j as usize);
-            let x = GridComplexGen::new(&diagram, &seq);
+            let x = GCGen::new(&diagram, &seq);
             assert!(table.contains(&x));
         }
     }

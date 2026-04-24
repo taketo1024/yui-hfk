@@ -7,8 +7,8 @@ use yui_core::lc::Lc;
 use yui_core::num::FF2;
 use yui_homology::{ChainComplex2, Grid, Grid2, Homology2, Summand, SummandTrait, isize2, range_of};
 use crate::grid_diagram::{GridDiagram, GridRect};
-use super::gen::GridComplexGen;
-use super::gen_table::GridComplexGenTable;
+use super::gen::GCGen;
+use super::gen_table::GCGenSet;
 
 pub trait GCType {
     fn is_admissible(rect: &GridRect, diagram: &GridDiagram, grid_size: u8) -> bool;
@@ -48,7 +48,7 @@ impl GCType for GCFiltered {
 
 pub struct GridComplex<V: GCType> {
     pub diagram: GridDiagram,
-    pub gens: GridComplexGenTable,
+    pub gens: GCGenSet,
     _phantom: PhantomData<V>,
 }
 
@@ -57,8 +57,8 @@ impl<V: GCType> GridComplex<V> {
         Self::new_filtered(diagram, |_| true)
     }
 
-    pub fn new_filtered(diagram: GridDiagram, pred: impl Fn(&GridComplexGen) -> bool) -> Self {
-        let generators = GridComplexGenTable::generate_filtered(&diagram, pred);
+    pub fn new_filtered(diagram: GridDiagram, pred: impl Fn(&GCGen) -> bool) -> Self {
+        let generators = GCGenSet::generate_filtered(&diagram, pred);
         GridComplex { diagram, gens: generators, _phantom: PhantomData }
     }
 
@@ -74,7 +74,7 @@ impl<V: GCType> GridComplex<V> {
         range_of(self.gens.support().map(|(_, j)| j))
     }
 
-    fn differentiate_gen(&self, x: &GridComplexGen) -> Lc<GridComplexGen, FF2> {
+    fn differentiate_gen(&self, x: &GCGen) -> Lc<GCGen, FF2> {
         use itertools::Itertools;
 
         let n = self.grid_number();
@@ -113,7 +113,7 @@ impl<V: GCType> GridComplex<V> {
 }
 
 impl GridComplex<GCTilde> {
-    fn differentiate(&self, x: &Lc<GridComplexGen, FF2>) -> Lc<GridComplexGen, FF2> {
+    fn differentiate(&self, x: &Lc<GCGen, FF2>) -> Lc<GCGen, FF2> {
         let mut result = Lc::new();
         for (gen, _) in x.iter() {
             result += self.differentiate_gen(gen);
@@ -121,7 +121,7 @@ impl GridComplex<GCTilde> {
         result
     }
 
-    pub fn into_complex(self) -> ChainComplex2<GridComplexGen, FF2> {
+    pub fn into_complex(self) -> ChainComplex2<GCGen, FF2> {
         let this = &self;
 
         let support: Vec<isize2> = this.gens.support()
@@ -140,7 +140,7 @@ impl GridComplex<GCTilde> {
         })
     }
 
-    pub fn into_homology(self) -> Homology2<GridComplexGen, FF2> {
+    pub fn into_homology(self) -> Homology2<GCGen, FF2> {
         self.into_complex().reduced().homology()
     }
 

@@ -10,4 +10,4 @@ pub mod grid_complex;
 pub mod misc;
 
 pub use grid_diagram::{GridDiagram, GridPoint, GridRect};
-pub use grid_complex::{GridComplexGen, GridComplex, GCType, GCTilde, GCHat, GCMinus, GCFiltered};
+pub use grid_complex::{GCGen, GridComplex, GCType, GCTilde, GCHat, GCMinus, GCFiltered};
