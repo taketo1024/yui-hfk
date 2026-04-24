@@ -102,7 +102,7 @@ impl Ord for GCGen {
 
 impl fmt::Display for GCGen {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "GridComplexGen({:?})", self.sequence())
+        write!(f, "x{:?}", self.sequence())
     }
 }
 
