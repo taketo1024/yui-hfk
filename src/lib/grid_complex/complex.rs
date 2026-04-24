@@ -10,23 +10,23 @@ use crate::grid_diagram::{GridDiagram, GridRect};
 use super::gen::GridComplexGen;
 use super::gen_table::GridComplexGenTable;
 
-pub trait GridComplexVariant {
+pub trait GCType {
     fn is_admissible(rect: &GridRect, diagram: &GridDiagram, grid_size: u8) -> bool;
 }
 
-pub struct Tilde;     // [Book] p.72,  Def 4.4.1
-pub struct Hat;       // [Book] p.80,  Def 4.6.12.
-pub struct Minus;     // [Book] p.75,  Def 4.6.1
-pub struct Filtered;  // [Book] p.252, Def 13.2.1
+pub struct GCTilde;     // [Book] p.72,  Def 4.4.1
+pub struct GCHat;       // [Book] p.80,  Def 4.6.12.
+pub struct GCMinus;     // [Book] p.75,  Def 4.6.1
+pub struct GCFiltered;  // [Book] p.252, Def 13.2.1
 
-impl GridComplexVariant for Tilde {
+impl GCType for GCTilde {
     fn is_admissible(rect: &GridRect, diagram: &GridDiagram, grid_size: u8) -> bool {
         !rect.intersects(&diagram.os, grid_size, false) &&
         !rect.intersects(&diagram.xs, grid_size, false)
     }
 }
 
-impl GridComplexVariant for Hat {
+impl GCType for GCHat {
     fn is_admissible(rect: &GridRect, diagram: &GridDiagram, grid_size: u8) -> bool {
         let n = diagram.grid_number() as usize;
         !rect.intersects(&diagram.xs, grid_size, false) &&
@@ -34,25 +34,25 @@ impl GridComplexVariant for Hat {
     }
 }
 
-impl GridComplexVariant for Minus {
+impl GCType for GCMinus {
     fn is_admissible(rect: &GridRect, diagram: &GridDiagram, grid_size: u8) -> bool {
         !rect.intersects(&diagram.xs, grid_size, false)
     }
 }
 
-impl GridComplexVariant for Filtered {
+impl GCType for GCFiltered {
     fn is_admissible(_rect: &GridRect, _diagram: &GridDiagram, _grid_size: u8) -> bool {
         true
     }
 }
 
-pub struct GridComplex<V: GridComplexVariant> {
+pub struct GridComplex<V: GCType> {
     pub diagram: GridDiagram,
     pub gens: GridComplexGenTable,
     _phantom: PhantomData<V>,
 }
 
-impl<V: GridComplexVariant> GridComplex<V> {
+impl<V: GCType> GridComplex<V> {
     pub fn new(diagram: GridDiagram) -> Self {
         Self::new_filtered(diagram, |_| true)
     }
@@ -112,7 +112,7 @@ impl<V: GridComplexVariant> GridComplex<V> {
     }
 }
 
-impl GridComplex<Tilde> {
+impl GridComplex<GCTilde> {
     fn differentiate(&self, x: &Lc<GridComplexGen, FF2>) -> Lc<GridComplexGen, FF2> {
         let mut result = Lc::new();
         for (gen, _) in x.iter() {
@@ -145,7 +145,7 @@ impl GridComplex<Tilde> {
     }
 
     pub fn genus(gd: &GridDiagram) -> usize { 
-        let cx = GridComplex::<Tilde>::new_filtered(gd.clone(), |x| x.alexander_deg > 0);
+        let cx = GridComplex::<GCTilde>::new_filtered(gd.clone(), |x| x.alexander_deg > 0);
         let m_range = cx.maslov_deg_range();
         let a_range = cx.alex_deg_range();
 
@@ -165,7 +165,7 @@ impl GridComplex<Tilde> {
     pub fn hfk(gd: &GridDiagram) -> Grid2<usize> { 
         let n = gd.grid_number();
 
-        let cx = GridComplex::<Tilde>::new_filtered(gd.clone(), |x| x.alexander_deg >= 0);
+        let cx = GridComplex::<GCTilde>::new_filtered(gd.clone(), |x| x.alexander_deg >= 0);
         let m_range = cx.maslov_deg_range();
         let a_range = cx.alex_deg_range();
         let h = cx.into_homology();
@@ -228,7 +228,7 @@ mod tests {
     #[test]
     fn test_tilde_unknot() {
         let gd = GridDiagram::unknot();
-        let cx = GridComplex::<Tilde>::new(gd);
+        let cx = GridComplex::<GCTilde>::new(gd);
         assert_eq!(cx.grid_number(), 2);
         assert_eq!(cx.gens.len(), 2);
 
@@ -240,7 +240,7 @@ mod tests {
     #[test]
     fn test_tilde_unknot_twist() {
         let gd = unknot_twist();
-        let cx = GridComplex::<Tilde>::new(gd);
+        let cx = GridComplex::<GCTilde>::new(gd);
         assert_eq!(cx.grid_number(), 3);
         assert_eq!(cx.gens.len(), 6);
 
@@ -254,7 +254,7 @@ mod tests {
     #[test]
     fn test_tilde_trefoil() {
         let gd = GridDiagram::trefoil();
-        let cx = GridComplex::<Tilde>::new(gd);
+        let cx = GridComplex::<GCTilde>::new(gd);
         assert_eq!(cx.grid_number(), 5);
         assert_eq!(cx.gens.len(), 120);
         assert_eq!(cx.maslov_deg_range(), -6..=0);
@@ -273,7 +273,7 @@ mod tests {
     #[test]
     fn test_tilde_trefoil_filtered() {
         let gd = GridDiagram::trefoil();
-        let cx = GridComplex::<Tilde>::new_filtered(gd, |x| x.alexander_deg >= 0);
+        let cx = GridComplex::<GCTilde>::new_filtered(gd, |x| x.alexander_deg >= 0);
 
         assert_eq!(cx.grid_number(), 5);
         assert_eq!(cx.gens.len(), 6);
@@ -293,35 +293,35 @@ mod tests {
     #[test]
     fn test_genus_unknot() {
         let gd = GridDiagram::unknot();
-        let g = GridComplex::<Tilde>::genus(&gd);
+        let g = GridComplex::<GCTilde>::genus(&gd);
         assert_eq!(g, 0);
     }
 
     #[test]
     fn test_genus_trefoil() {
         let gd = GridDiagram::trefoil();
-        let g = GridComplex::<Tilde>::genus(&gd);
+        let g = GridComplex::<GCTilde>::genus(&gd);
         assert_eq!(g, 1);
     }
 
     #[test]
     fn test_genus_5_1() {
         let gd = GridDiagram::from_sequences(&[5,4,3,2,1,0,6], &[0,6,5,4,3,2,1]);
-        let g = GridComplex::<Tilde>::genus(&gd);
+        let g = GridComplex::<GCTilde>::genus(&gd);
         assert_eq!(g, 2);
     }
 
     #[test]
     fn test_hfk_unknot() {
         let gd = GridDiagram::unknot();
-        let h = GridComplex::<Tilde>::hfk(&gd);
+        let h = GridComplex::<GCTilde>::hfk(&gd);
         assert_eq!(h[(0, 0)], 1);
     }
 
     #[test]
     fn test_hfk_trefoil() {
         let gd = GridDiagram::trefoil();
-        let h = GridComplex::<Tilde>::hfk(&gd);
+        let h = GridComplex::<GCTilde>::hfk(&gd);
         assert_eq!(h[(0, 1)], 1);
         assert_eq!(h[(-1, 0)], 1);
         assert_eq!(h[(-2, -1)], 1);
@@ -330,7 +330,7 @@ mod tests {
     #[test]
     fn test_hfk_4_1() {
         let gd = GridDiagram::figure8();
-        let h = GridComplex::<Tilde>::hfk(&gd);
+        let h = GridComplex::<GCTilde>::hfk(&gd);
         assert_eq!(h[(1, 1)], 1);
         assert_eq!(h[(0, 0)], 3);
         assert_eq!(h[(-1, -1)], 1);

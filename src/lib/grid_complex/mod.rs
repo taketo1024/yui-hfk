@@ -1,5 +1,5 @@
 pub mod complex;
-pub use complex::{GridComplex, GridComplexVariant, Tilde, Hat, Minus, Filtered};
+pub use complex::{GridComplex, GCType, GCTilde, GCHat, GCMinus, GCFiltered};
 
 pub mod gen;
 pub use gen::GridComplexGen;
