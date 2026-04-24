@@ -91,8 +91,8 @@ impl<V: GCType> GridComplex<V> {
         self.gens.alex_deg_range()
     }
 
-    fn raw_gens(&self, i: isize, j: isize) -> impl Iterator<Item = &GCGen> {
-        self.gens.iter().filter(move |g| g.maslov_deg == i && g.alex_deg == j)
+    fn raw_gens(&self, i: isize, j: isize) -> &[GCGen] {
+        self.gens.raw_gens(i, j)
     }
 
     fn inf_gens(&self, i: isize, j: isize) -> impl Iterator<Item = GCInfGen> {
@@ -182,7 +182,7 @@ impl GridComplex<GCTilde> {
         let this = &self;
         let summands = {
             Grid::generate(support, move |idx| {
-                Summand::from_raw_gens(this.raw_gens(idx.0, idx.1).cloned())
+                Summand::from_raw_gens(this.raw_gens(idx.0, idx.1).iter().cloned())
             })
         };
 

@@ -1,38 +1,35 @@
-use std::ops::RangeInclusive;
+use std::ops::{Range, RangeInclusive};
 
-use ahash::AHashSet;
+use ahash::AHashMap;
 use yui_homology::range_of;
 use crate::grid_diagram::{GridDiagram, GridPoint, GridRect};
 use crate::misc::heap::heap_transpositions;
 use super::gen::GCGen;
 
 pub struct GCGenSet {
-    inner: AHashSet<GCGen>,
+    list: Vec<GCGen>, // sorted by (alex_deg, maslov_deg)
+    dict: AHashMap<(isize, isize), Range<usize>>, // (maslov_deg, alex_deg) → range into inner
 }
 
 impl GCGenSet {
-    fn new() -> Self {
-        GCGenSet { inner: AHashSet::new() }
-    }
-
-    pub fn generate_from(diagram: &GridDiagram) -> Self { 
+    pub fn generate_from(diagram: &GridDiagram) -> Self {
         Self::generate_filtered(diagram, |_| true)
     }
 
-    pub fn generate_filtered(diagram: &GridDiagram, pred: impl Fn(&GCGen) -> bool) -> Self { 
+    pub fn generate_filtered(diagram: &GridDiagram, pred: impl Fn(&GCGen) -> bool) -> Self {
         let n = diagram.grid_number();
         let size = 2 * n;
         let trans = heap_transpositions(n);
 
-        let mut result = GCGenSet::new();
+        let mut gens: Vec<GCGen> = Vec::new();
         let mut seq: Vec<u8> = (0..n).collect();
         let mut x = GCGen::new(diagram, &seq);
         let mut pts = x.points();
 
         if pred(&x) {
-            result.insert(x.clone());
+            gens.push(x.clone());
         }
-        
+
         for (i, j) in trans {
             let (i, j) = (i as usize, j as usize);
             let rect = GridRect::between(pts[i], pts[j], size);
@@ -53,48 +50,58 @@ impl GCGenSet {
             let m_deg = x.maslov_deg + 2 * (n_o - c) - 1;
             let a_deg = x.alex_deg + n_o - n_x;
 
-            x = GCGen::from_raw(
-                GCGen::encode(&seq),
-                n,
-                m_deg,
-                a_deg
-            );
+            x = GCGen::from_raw(GCGen::encode(&seq), n, m_deg, a_deg);
 
             if pred(&x) {
-                result.insert(x.clone());
+                gens.push(x.clone());
             }
         }
 
-        result
+        gens.sort();
+        let by_deg = Self::build_index(&gens);
+
+        GCGenSet { list: gens, dict: by_deg }
     }
 
-    pub fn len(&self) -> usize { 
-        self.inner.len()
+    fn build_index(gens: &[GCGen]) -> AHashMap<(isize, isize), Range<usize>> {
+        let mut by_deg = AHashMap::new();
+        let mut i = 0;
+        while i < gens.len() {
+            let key = (gens[i].maslov_deg, gens[i].alex_deg);
+            let j = i + gens[i..].partition_point(|g| g.maslov_deg == key.0 && g.alex_deg == key.1);
+            by_deg.insert(key, i..j);
+            i = j;
+        }
+        by_deg
     }
 
-    pub fn insert(&mut self, x: GCGen) {
-        self.inner.insert(x);
+    pub fn len(&self) -> usize {
+        self.list.len()
     }
 
     pub fn contains(&self, x: &GCGen) -> bool {
-        self.inner.contains(x)
+        self.raw_gens(x.maslov_deg, x.alex_deg).iter().any(|g| g.code == x.code)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &GCGen> {
-        self.inner.iter()
+        self.list.iter()
+    }
+
+    pub fn raw_gens(&self, maslov: isize, alex: isize) -> &[GCGen] {
+        self.dict.get(&(maslov, alex)).map_or(&[], |r| &self.list[r.clone()])
     }
 
     pub fn gen_from_seq(&self, seq: &[u8]) -> Option<&GCGen> {
         let code = GCGen::encode(seq);
-        self.inner.iter().find(|g| g.code == code)
+        self.list.iter().find(|g| g.code == code)
     }
 
-    pub fn maslov_deg_range(&self) -> RangeInclusive<isize> { 
-        range_of(self.iter().map(|x| x.maslov_deg))
+    pub fn maslov_deg_range(&self) -> RangeInclusive<isize> {
+        range_of(self.dict.keys().map(|&(m, _)| m))
     }
 
-    pub fn alex_deg_range(&self) -> RangeInclusive<isize> { 
-        range_of(self.iter().map(|x| x.alex_deg))
+    pub fn alex_deg_range(&self) -> RangeInclusive<isize> {
+        range_of(self.dict.keys().map(|&(_, a)| a))
     }
 }
 
@@ -144,5 +151,23 @@ mod tests {
             let x = GCGen::new(&diagram, &seq);
             assert!(table.contains(&x));
         }
+    }
+
+    #[test]
+    fn test_raw_gens() {
+        let diagram = GridDiagram::trefoil();
+        let table = GCGenSet::generate_from(&diagram);
+
+        for (&(m, a), range) in &table.dict {
+            assert!(!range.is_empty());
+            for g in &table.list[range.clone()] {
+                assert_eq!(g.maslov_deg, m);
+                assert_eq!(g.alex_deg, a);
+            }
+        }
+
+        // Total across all bidegrees equals total count
+        let total: usize = table.dict.values().map(|r| r.len()).sum();
+        assert_eq!(total, table.len());
     }
 }
