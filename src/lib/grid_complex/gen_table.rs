@@ -89,10 +89,6 @@ impl GCGenSet {
         self.inner.iter().find(|g| g.code == code)
     }
 
-    pub fn gens_of_degree(&self, m: isize, a: isize) -> impl Iterator<Item = &GCGen> {
-        self.inner.iter().filter(move |g| g.maslov_deg == m && g.alex_deg == a)
-    }
-
     pub fn maslov_deg_range(&self) -> RangeInclusive<isize> { 
         range_of(self.iter().map(|x| x.maslov_deg))
     }

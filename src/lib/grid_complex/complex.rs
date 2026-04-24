@@ -74,6 +74,10 @@ impl<V: GCType> GridComplex<V> {
         self.gens.alex_deg_range()
     }
 
+    fn raw_gens(&self, i: isize, j: isize) -> impl Iterator<Item = &GCGen> {
+        self.gens.iter().filter(move |g| g.maslov_deg == i && g.alex_deg == j)
+    }
+
     fn differentiate_gen(&self, x: &GCGen) -> Lc<GCGen, FF2> {
         use itertools::Itertools;
 
@@ -129,8 +133,7 @@ impl GridComplex<GCTilde> {
         let this = &self;
         let summands = {
             Grid::generate(support, move |idx| {
-                let gens = this.gens.gens_of_degree(idx.0, idx.1).cloned();
-                Summand::from_raw_gens(gens)
+                Summand::from_raw_gens(this.raw_gens(idx.0, idx.1).cloned())
             })
         };
 
