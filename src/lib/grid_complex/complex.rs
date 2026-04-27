@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 use num_traits::{One, Zero};
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
-use yui_homology::{ChainComplex2, Grid, Homology2, Summand, SummandTrait, isize2, range_of};
+use yui_homology::{ChainComplex, ChainComplex2, Grid, Homology, Homology2, Summand, SummandTrait, isize2, range_of};
 use yui_core::poly::MultiVar;
 use crate::grid_complex::r#gen::GCInfGen;
 use crate::grid_diagram::{GridDiagram, GridRect};
@@ -237,8 +237,8 @@ impl<V: GCBigradedType + GCInfType + Send + Sync + 'static> GridComplex<V> {
     pub fn into_complex(self) -> ChainComplex2<GCInfGen, FF2> {
         let a_range = self.gens.alex_deg_range();
         let a_min = *a_range.start();
-        let m_range = range_of(self.gens.iter().flat_map(|x| 
-            [x.maslov_deg - 2 * (x.alex_deg - a_min), x.maslov_deg]
+        let m_range = range_of(self.gens.support().flat_map(|&(i, j)| 
+            [i - 2 * (j - a_min), i]
         ));
 
         let support: Vec<isize2> = a_range.rev().flat_map(|j|
@@ -257,6 +257,35 @@ impl<V: GCBigradedType + GCInfType + Send + Sync + 'static> GridComplex<V> {
 
     pub fn into_homology(self) -> Homology2<GCInfGen, FF2> {
         self.into_complex().reduced().homology()
+    }
+}
+
+// Implementation for GCFiltered.
+impl GridComplex<GCFiltered> {
+    pub fn into_complex(self, maslov_bound: isize) -> ChainComplex<GCInfGen, FF2> {
+        let m_max = *self.gens.maslov_deg_range().end();
+        let m_range = maslov_bound ..= m_max;
+        let a_range = range_of(self.gens.support().flat_map(|&(i, j)| { 
+            if i >= maslov_bound { 
+                vec![j - (i - maslov_bound) / 2, j]
+            } else {
+                vec![]
+            }
+        }));
+
+        let this = &self;
+        let summands = Grid::generate(m_range.rev(), move |i| {
+            let gens = a_range.clone().flat_map(|j| this.inf_gens(i, j));
+            Summand::from_raw_gens(gens)
+        });
+
+        ChainComplex::new(summands, -1, move |_, z| {
+            self.differentiate(z)
+        })
+    }
+
+    pub fn into_homology(self, maslov_bound: isize) -> Homology<GCInfGen, FF2> {
+        self.into_complex(maslov_bound - 2).reduced().homology().truncated(maslov_bound ..= 0)
     }
 }
 
@@ -506,5 +535,29 @@ mod tests {
         assert_eq!(h[(-2, -1)].rank(), 1);
         assert_eq!(h[(-4, -2)].rank(), 1);
         assert_eq!(h.total_rank(), 3);
+    }
+
+    // -- GCFiltered tests --
+
+    #[test]
+    fn test_filt_unknot() {
+        let gd = GridDiagram::from_arc_presentation(&[1,2,3,1,2,3]);
+        let gc = GridComplex::<GCFiltered>::new(gd);
+        let gh = gc.into_homology(-4);
+        assert_eq!(gh[0].rank(), 1);
+        assert_eq!(gh[-2].rank(), 1);
+        assert_eq!(gh[-4].rank(), 1);
+        assert_eq!(gh.total_rank(), 3);
+    }
+
+    #[test]
+    fn test_filt_trefoil() {
+        let gd = GridDiagram::trefoil();
+        let gc = GridComplex::<GCFiltered>::new(gd);
+        let gh = gc.into_homology(-4);
+        assert_eq!(gh[0].rank(), 1);
+        assert_eq!(gh[-2].rank(), 1);
+        assert_eq!(gh[-4].rank(), 1);
+        assert_eq!(gh.total_rank(), 3);
     }
 }
