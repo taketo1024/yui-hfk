@@ -200,8 +200,12 @@ mod tests {
         let gd = GridDiagram::unknot();
         let cx = GridComplex::<GCFiltered>::new(gd);
         let z = cx.hom_gen();
+
         assert!(!z.is_zero());
-        assert!(cx.differentiate(&z).is_zero())
+        assert!(cx.differentiate(&z).is_zero());
+
+        let gh = cx.into_homology(0);
+        assert_eq!(gh[0].vectorize(&z).into_vec(), vec![FF2::one()]);
     }
 
     #[test]
@@ -209,8 +213,12 @@ mod tests {
         let gd = GridDiagram::trefoil();
         let cx = GridComplex::<GCFiltered>::new(gd);
         let z = cx.hom_gen();
+        
         assert!(!z.is_zero());
-        assert!(cx.differentiate(&z).is_zero())
+        assert!(cx.differentiate(&z).is_zero());
+
+        let gh = cx.into_homology(0);
+        assert_eq!(gh[0].vectorize(&z).into_vec(), vec![FF2::one()]);
     }
 
     #[test]
@@ -218,7 +226,11 @@ mod tests {
         let gd = GridDiagram::figure8();
         let cx = GridComplex::<GCFiltered>::new(gd);
         let z = cx.hom_gen();
+        
         assert!(!z.is_zero());
-        assert!(cx.differentiate(&z).is_zero())
+        assert!(cx.differentiate(&z).is_zero());
+
+        let gh = cx.into_homology(0);
+        assert_eq!(gh[0].vectorize(&z).into_vec(), vec![FF2::one()]);
     }
 }
