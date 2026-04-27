@@ -103,6 +103,10 @@ impl GCGenSet {
     pub fn alex_deg_range(&self) -> RangeInclusive<isize> {
         range_of(self.dict.keys().map(|&(_, a)| a))
     }
+
+    pub fn support(&self) -> impl Iterator<Item = &(isize, isize)> { 
+        self.dict.keys()
+    }
 }
 
 #[cfg(test)]
