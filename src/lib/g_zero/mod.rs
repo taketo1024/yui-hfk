@@ -1,3 +1,4 @@
+pub mod find;
 pub mod region;
 pub mod screen;
 pub mod candidates;
