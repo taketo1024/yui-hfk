@@ -3,7 +3,6 @@ use num_integer::Integer;
 use crate::grid_diagram::MAX_SIZE;
 
 use super::point::{GridPoint, odd_points};
-use super::rect::GridRect;
 use std::fs;
 use std::path::Path;
 
@@ -114,26 +113,7 @@ impl GridDiagram {
         self.size / 2
     }
 
-    /// All possible rectangles with even origin and even size.
-    pub fn all_rects(&self) -> Vec<GridRect> {
-        let n = self.grid_number();
-        let mut rects = Vec::new();
-        for x in 0..n {
-            for y in 0..n {
-                for w in 0..n {
-                    for h in 0..n {
-                        rects.push(GridRect::new(
-                            GridPoint::new(2 * x, 2 * y),
-                            (2 * w, 2 * h),
-                        ));
-                    }
-                }
-            }
-        }
-        rects
-    }
-
-    pub fn unknot() -> GridDiagram { 
+pub fn unknot() -> GridDiagram { 
         GridDiagram::from_sequences(&[0,1], &[1,0])
     }
 
@@ -283,14 +263,6 @@ mod tests {
         assert_eq!(a_deg, (m_o - m_x - n + 1) / 2);
     }
 
-    /// Test 7: All rectangles generation
-    #[test]
-    fn test_all_rects() {
-        let g = GridDiagram::from_sequences(&[0, 1], &[1, 0]);
-        let rects = g.all_rects();
-        // For n=2, we have n^4 = 16 rectangles
-        assert_eq!(rects.len(), 16);
-    }
 
     /// Test 8: Display formatting
     #[test]
