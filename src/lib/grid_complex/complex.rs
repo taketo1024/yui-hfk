@@ -201,14 +201,13 @@ impl GridComplex<GCTilde> {
         let a_range = cx.alex_deg_range();
 
         let h = cx.into_homology();
-        for j in a_range.rev() { 
-            for i in m_range.clone().rev() { 
-                if h[(i, j)].rank() > 0 { 
-                    return j as usize
-                }
-            }
-        }
-        0
+        a_range.rev()
+            .find_map(|j| {
+                m_range.clone()
+                    .any(|i| h[(i, j)].rank() > 0)
+                    .then_some(j as usize)
+            })
+            .unwrap_or(0)
     }
 }
 
