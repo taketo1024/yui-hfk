@@ -79,30 +79,23 @@ fn apply_pentagon(
         .map(|r| GridPoint::new(2 * r as u8 + 1, 2 * curr_os[r] + 1))
         .collect();
 
-    let mut result: Vec<(GCInfGen, FF2)> = Vec::new();
-
-    for (inf_gen, _) in z.into_iter() {
-        let x_seq = inf_gen.gen.sequence();
-        let x_pts = inf_gen.gen.points();
-        // q = U-monomial with U_i and U_j swapped
-        let q = swap_u(&inf_gen.u, i, j, n);
-
-        for k in 0..n {
-            if k == j { continue; }
-
-            let mut y_seq = x_seq.clone();
-            y_seq.swap(j, k);
-
-            let Some(rect) = find_empty_rect_containing(&x_pts, j, k, v, grid_size)
-                else { continue; };
-
-            let c = compute_u_coeff(&rect, &o_pts, oi, oj, i, j, n, grid_size);
-            let y = GCGen::from_raw(GCGen::encode(&y_seq), n as u8, 0, 0);
-            result.push((GCInfGen::new(y, &q * &c), FF2::one()));
-        }
-    }
-
-    result.into_iter().collect()
+    z.into_iter()
+        .flat_map(|(inf_gen, _)| {
+            let x_seq = inf_gen.gen.sequence();
+            let x_pts = inf_gen.gen.points();
+            let q = swap_u(&inf_gen.u, i, j, n);
+            let o_ref = o_pts.as_slice();
+            (0..n).filter_map(move |k| {
+                if k == j { return None; }
+                let mut y_seq = x_seq.clone();
+                y_seq.swap(j, k);
+                let rect = find_empty_rect_containing(&x_pts, j, k, v, grid_size)?;
+                let c = compute_u_coeff(&rect, o_ref, oi, oj, i, j, n, grid_size);
+                let y = GCGen::from_raw(GCGen::encode(&y_seq), n as u8, 0, 0);
+                Some((GCInfGen::new(y, &q * &c), FF2::one()))
+            })
+        })
+        .collect()
 }
 
 /// Return a new monomial with the exponents of U_i and U_j exchanged.
