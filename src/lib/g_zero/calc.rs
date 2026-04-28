@@ -1,3 +1,4 @@
+use log::info;
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
 use yui_core::poly::MultiVar;
@@ -15,15 +16,29 @@ pub struct G0Calc {
 
 impl G0Calc {
     pub fn new(gd: GridDiagram) -> Self {
+        info!("compute HFK ...");
         let hfk = HFK::from(&gd);
-        let gc = GridComplex::<GCFiltered>::new(gd);
-        let z = gc.hom_gen();
+        info!("HFK:\n{}", hfk.display_table("M", "A"));
 
         let g = hfk.genus() as usize;
+        info!("g = {g}");
+
         let mut candidates = Candidates::generate_from(g);
         candidates.deduplicate();
         candidates.filter_by_hfk(&hfk);
         candidates.sort();
+
+        info!("candidate regions: {}", candidates.regions.len());
+        for r in &candidates.regions {
+            info!("  {r}");
+        }
+
+        info!("prepare generators ...");
+        let gc = GridComplex::<GCFiltered>::new(gd);
+        info!("  #generators: {}", gc.gens.len());
+
+        info!("compute homological generator");
+        let z = gc.hom_gen();
 
         G0Calc { gc, z, candidates }
     }
@@ -44,12 +59,20 @@ impl G0Calc {
     // inside r. Shifts both r and z by s = right_end(r) so that the shifted
     // region has right_end = 0, which is required by find_homologous.
     fn process(&mut self, r: Region) {
+        info!("try: {r} (remain: {})", self.candidates.regions.len());
+
         let s = r.right_end().max(0);
         let r_shifted = r.shift(-s, -s);
         let z_shifted = self.shift_z(s as usize);
         match self.gc.find_homologous(&z_shifted, &r_shifted) {
-            Some(_) => self.candidates.accept(&r),
-            None    => self.candidates.reject(&r),
+            Some(_) => { 
+                info!("OK: {r}"); 
+                self.candidates.accept(&r); 
+            },
+            None => { 
+                info!("NG: {r}"); 
+                self.candidates.reject(&r); 
+            }
         }
     }
 
