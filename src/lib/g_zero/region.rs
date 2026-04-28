@@ -1,4 +1,8 @@
 use std::fmt;
+use num_traits::Zero;
+use yui_core::lc::Lc;
+use yui_core::num::FF2;
+use crate::grid_complex::GCInfGen;
 
 /// A single corner (i, j) representing the rectangle (-∞, i] × (-∞, j].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -92,6 +96,14 @@ impl Region {
     /// Returns true if p is in the region (some corner dominates p).
     pub fn contains(&self, p: (isize, isize)) -> bool {
         self.corners.iter().any(|c| c.contains(p))
+    }
+
+    pub fn contains_gen(&self, x: &GCInfGen) -> bool {
+        self.contains((x.alg_deg(), x.alex_deg()))
+    }
+
+    pub fn contains_chain(&self, z: &Lc<GCInfGen, FF2>) -> bool {
+        z.iter().all(|(g, c)| c.is_zero() || self.contains_gen(g))
     }
 
     /// Returns true if every corner of `other` is contained in self.
