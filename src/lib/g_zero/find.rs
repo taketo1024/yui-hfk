@@ -77,25 +77,13 @@ fn cutoff(z: &Lc<GCInfGen, FF2>, r: &Region) -> Lc<GCInfGen, FF2> {
 
 #[cfg(test)]
 mod tests {
-    use num_traits::{One, Zero};
-    use yui_core::poly::MultiVar;
+    use num_traits::Zero;
     use yui_homology::SummandTrait;
     use super::*;
-    use crate::grid_complex::{GCGen, GCInfGen};
+    use crate::grid_complex::{GCInfGen};
     use crate::{GridComplex, GridDiagram};
+    use crate::grid_complex::chain::tests::{make_gen, lc_of};
     use super::super::{Corner, Region};
-
-    fn make_gen(code: usize, grid_number: u8, maslov: isize, alex: isize, u_degs: &[usize]) -> GCInfGen {
-        let base = GCGen::from_raw(code, grid_number, maslov, alex);
-        let u = MultiVar::<'U', usize>::from_iter(
-            u_degs.iter().copied().enumerate().filter(|(_, d)| *d > 0),
-        );
-        GCInfGen::new(base, u)
-    }
-
-    fn lc_of(gens: &[GCInfGen]) -> Lc<GCInfGen, FF2> {
-        gens.iter().cloned().map(|g| (g, FF2::one())).collect()
-    }
 
     // ---- cutoff tests ----
 
