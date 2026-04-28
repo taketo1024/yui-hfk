@@ -59,3 +59,83 @@ impl G0Calc {
         self.z.mul(&u)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::GridDiagram;
+    use crate::g_zero::Corner;
+
+    fn accepted(gd: GridDiagram) -> Vec<Region> {
+        let mut calc = G0Calc::new(gd);
+        calc.run();
+        let mut rs = calc.accepted().to_vec();
+        rs.sort_by_key(|r| r.right_end());
+        rs
+    }
+
+    #[test]
+    fn test_unknot() {
+        let rs = accepted(GridDiagram::load("0_1").unwrap());
+        assert_eq!(rs, vec![Region::simple(0, 0)]);
+    }
+
+    #[test]
+    fn test_trefoil() {
+        let rs = accepted(GridDiagram::load("3_1").unwrap());
+        assert_eq!(rs.len(), 2);
+        assert!(rs.contains(&Region::simple(0, 1)));
+        assert!(rs.contains(&Region::simple(1, 0)));
+    }
+
+    #[test]
+    fn test_trefoil_mirror() {
+        let rs = accepted(GridDiagram::load("3_1").unwrap().rotate90());
+        assert_eq!(rs, vec![Region::new([Corner::new(-1, 0), Corner::new(0, -1)])]);
+    }
+
+    #[test]
+    fn test_figure8() {
+        let rs = accepted(GridDiagram::load("4_1").unwrap());
+        assert_eq!(rs, vec![Region::simple(0, 0)]);
+    }
+
+    #[test]
+    fn test_figure8_mirror() {
+        let rs = accepted(GridDiagram::load("4_1").unwrap().rotate90());
+        assert_eq!(rs, vec![Region::simple(0, 0)]);
+    }
+
+    #[test]
+    fn test_5_1() {
+        let rs = accepted(GridDiagram::load("5_1").unwrap());
+        assert_eq!(rs.len(), 3);
+        assert!(rs.contains(&Region::simple(0, 2)));
+        assert!(rs.contains(&Region::simple(1, 1)));
+        assert!(rs.contains(&Region::simple(2, 0)));
+    }
+
+    #[test]
+    fn test_5_1_mirror() {
+        let rs = accepted(GridDiagram::load("5_1").unwrap().rotate90());
+        assert_eq!(rs, vec![Region::new([
+            Corner::new(-2, 0),
+            Corner::new(-1, -1),
+            Corner::new(0, -2),
+        ])]);
+    }
+
+    #[test]
+    fn test_5_2() {
+        let rs = accepted(GridDiagram::load("5_2").unwrap());
+        assert_eq!(rs.len(), 2);
+        assert!(rs.contains(&Region::simple(0, 1)));
+        assert!(rs.contains(&Region::simple(1, 0)));
+    }
+
+    #[test]
+    fn test_5_2_mirror() {
+        let rs = accepted(GridDiagram::load("5_2").unwrap().rotate90());
+        assert_eq!(rs, vec![Region::new([Corner::new(-1, 0), Corner::new(0, -1)])]);
+    }
+}
