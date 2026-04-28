@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::ops::Index;
 
 use delegate::delegate;
+use itertools::Itertools;
 use num_integer::binomial;
 use num_traits::Zero;
 use yui_homology::{DisplayTable, Grid2, GridTrait, SummandTrait, isize2, range_of};
@@ -42,17 +43,16 @@ impl From<&GridDiagram> for HFK {
         let cx = GridComplex::<GCTilde>::new_filtered(gd.clone(), |x| x.alex_deg >= 0);
         let m_range = cx.maslov_deg_range();
         let a_range = cx.alex_deg_range();
+        let support = cx.gens.support().copied().collect_vec();
         let h = cx.into_homology();
 
-        let mut ranks: HashMap<(isize, isize), usize> = HashMap::new();
-
-        for j in a_range.clone() { 
-            for i in m_range.clone() { 
-                if !h[(i, j)].is_zero() { 
-                    ranks.insert((i, j), h[(i, j)].rank());
-                }
-            }
-        }
+        // collect ranks of GH-tilde. 
+        let mut ranks: HashMap<(isize, isize), usize> = support.into_iter()
+            .filter_map(|(i, j)| {
+                let r = h[(i, j)].rank();
+                (r > 0).then_some(((i, j), r))
+            })
+            .collect();
 
         // divide by W^(n - 1).
         for j in a_range.clone().rev() { 
