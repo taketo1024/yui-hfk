@@ -1,0 +1,130 @@
+use num_traits::Zero;
+use yui_core::lc::Lc;
+use yui_core::num::FF2;
+
+use crate::grid_complex::GCInfGen;
+
+pub trait GCInfChainExt {
+    fn is_maslov_homogeneous(&self) -> bool;
+    fn alex_degree(&self) -> isize;
+    fn alg_degree(&self) -> isize;
+}
+
+impl GCInfChainExt for Lc<GCInfGen, FF2> {
+    fn is_maslov_homogeneous(&self) -> bool {
+        let mut degs = self.iter()
+            .filter(|(_, c)| !c.is_zero())
+            .map(|(g, _)| g.maslov_deg());
+        match degs.next() {
+            None => true,
+            Some(first) => degs.all(|d| d == first),
+        }
+    }
+
+    fn alex_degree(&self) -> isize {
+        self.iter()
+            .filter(|(_, c)| !c.is_zero())
+            .map(|(g, _)| g.alex_deg())
+            .max()
+            .unwrap_or(0)
+    }
+
+    fn alg_degree(&self) -> isize {
+        self.iter()
+            .filter(|(_, c)| !c.is_zero())
+            .map(|(g, _)| -(g.u.total_deg() as isize))
+            .max()
+            .unwrap_or(0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use num_traits::One;
+    use yui_core::poly::MultiVar;
+    use super::*;
+    use crate::grid_complex::{GCGen, GCInfGen};
+
+    // code distinguishes generators; grid_number must be >= u_degs.len()
+    fn make_gen(code: usize, grid_number: u8, maslov: isize, alex: isize, u_degs: &[usize]) -> GCInfGen {
+        let base = GCGen::from_raw(code, grid_number, maslov, alex);
+        let u = MultiVar::<'U', usize>::from_iter(
+            u_degs.iter().copied().enumerate().filter(|(_, d)| *d > 0)
+        );
+        GCInfGen::new(base, u)
+    }
+
+    fn lc_of(gens: &[GCInfGen]) -> Lc<GCInfGen, FF2> {
+        gens.iter().cloned().map(|g| (g, FF2::one())).collect()
+    }
+
+    #[test]
+    fn test_is_maslov_homogeneous_empty() {
+        let z: Lc<GCInfGen, FF2> = Lc::new();
+        assert!(z.is_maslov_homogeneous());
+    }
+
+    #[test]
+    fn test_is_maslov_homogeneous_single() {
+        let lc = lc_of(&[make_gen(0, 2, 3, 1, &[])]);
+        assert!(lc.is_maslov_homogeneous());
+    }
+
+    #[test]
+    fn test_is_maslov_homogeneous_same() {
+        // both have maslov_deg() = 2 (no U-factors)
+        let g1 = make_gen(0, 2, 2, 0, &[]);
+        let g2 = make_gen(1, 2, 2, 1, &[]);
+        let lc = lc_of(&[g1, g2]);
+        assert!(lc.is_maslov_homogeneous());
+    }
+
+    #[test]
+    fn test_is_maslov_homogeneous_different() {
+        // distinct codes → don't cancel; maslov_deg 2 vs 4
+        let g1 = make_gen(0, 2, 2, 0, &[]);
+        let g2 = make_gen(1, 2, 4, 0, &[]);
+        let lc = lc_of(&[g1, g2]);
+        assert!(!lc.is_maslov_homogeneous());
+    }
+
+    #[test]
+    fn test_alex_degree_empty() {
+        let z: Lc<GCInfGen, FF2> = Lc::new();
+        assert_eq!(z.alex_degree(), 0);
+    }
+
+    #[test]
+    fn test_alex_degree() {
+        // alex_deg() = gen.alex_deg - u.total_deg
+        let g1 = make_gen(0, 2, 0, 3, &[]);    // 3 - 0 = 3
+        let g2 = make_gen(1, 2, 0, 5, &[2]);   // 5 - 2 = 3
+        let g3 = make_gen(2, 2, 0, 2, &[]);    // 2 - 0 = 2
+        let lc = lc_of(&[g1, g2, g3]);
+        assert_eq!(lc.alex_degree(), 3);
+    }
+
+    #[test]
+    fn test_alg_degree_empty() {
+        let z: Lc<GCInfGen, FF2> = Lc::new();
+        assert_eq!(z.alg_degree(), 0);
+    }
+
+    #[test]
+    fn test_alg_degree() {
+        // alg_degree of a term = -(u.total_deg); max = least-negative
+        let g1 = make_gen(0, 2, 0, 0, &[1]);    // -(1) = -1
+        let g2 = make_gen(1, 2, 0, 0, &[0, 3]); // -(3) = -3
+        let g3 = make_gen(2, 2, 0, 0, &[]);     // -(0) = 0
+        let lc = lc_of(&[g1, g2, g3]);
+        assert_eq!(lc.alg_degree(), 0);
+    }
+
+    #[test]
+    fn test_alg_degree_no_unit() {
+        let g1 = make_gen(0, 2, 0, 0, &[2]);    // -(2) = -2
+        let g2 = make_gen(1, 2, 0, 0, &[0, 1]); // -(1) = -1
+        let lc = lc_of(&[g1, g2]);
+        assert_eq!(lc.alg_degree(), -1);
+    }
+}

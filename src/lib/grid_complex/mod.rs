@@ -8,3 +8,6 @@ pub mod gen_table;
 pub use gen_table::GCGenSet;
 
 pub mod hom_gen;
+
+pub mod chain;
+pub use chain::GCInfChainExt;
