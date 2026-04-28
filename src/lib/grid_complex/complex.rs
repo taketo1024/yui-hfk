@@ -93,7 +93,7 @@ impl<V: GCType> GridComplex<V> {
         self.gens.raw_gens(i, j)
     }
 
-    fn inf_gens(&self, i: isize, j: isize) -> impl Iterator<Item = GCInfGen> {
+    pub(crate) fn inf_gens(&self, i: isize, j: isize) -> impl Iterator<Item = GCInfGen> {
         use itertools::Itertools;
 
         let n = V::nvars(self.grid_number());
