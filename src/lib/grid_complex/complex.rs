@@ -1,5 +1,6 @@
 use std::marker::PhantomData;
 use std::ops::RangeInclusive;
+use itertools::Itertools;
 use num_traits::{One, Zero};
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
@@ -93,35 +94,36 @@ impl<V: GCType> GridComplex<V> {
         self.gens.raw_gens(i, j)
     }
 
-    pub(crate) fn inf_gens(&self, i: isize, j: isize) -> impl Iterator<Item = GCInfGen> {
-        use itertools::Itertools;
-
-        let n = V::nvars(self.grid_number());
+    pub(crate) fn inf_gens(&self, i: isize, j: isize) -> Vec<GCInfGen> {
         let i_max = *self.gens.maslov_deg_range().end();
         let max_e = if i <= i_max { (i_max - i) as usize / 2 } else { 0 };
+        (0..=max_e).flat_map(|e| self.inf_gens_e(i, j, e)).collect_vec()
+    }
 
-        // For each e, collect raw gens at (i + 2e, j + e) tensored with
-        // all monomials of total degree e in n variables.
-        //
-        //              * x ... (i + 2e, j + e)
-        //              |
-        //              | e
-        //        2e    |
-        //  * ----------
-        //  U^e ⊗ x ... (i, j)
-
-        let mut result = Vec::new();
-        for e in 0..=max_e {
-            for x in self.raw_gens(i + 2 * e as isize, j + e as isize) {
-                for combo in (0..n).combinations_with_replacement(e) {
+    // Generators at (maslov=i, alex=j) with total U-degree exactly e.
+    // Raw gens sit at (i + 2e, j + e); each is tensored with all monomials of degree e.
+    //
+    //              * x ← (i + 2e, j + e)
+    //              |
+    //              | e
+    //        2e    |
+    //  * ----------
+    //  ↑
+    //  U^e ⊗ x ... (i, j)
+    //
+    pub(crate) fn inf_gens_e(&self, i: isize, j: isize, e: usize) -> Vec<GCInfGen> {
+        let n = V::nvars(self.grid_number());
+        self.raw_gens(i + 2 * e as isize, j + e as isize)
+            .iter()
+            .flat_map(move |x| {
+                (0..n).combinations_with_replacement(e).map(move |combo| {
                     let u = MultiVar::from_iter(
                         (0..n).map(|k| (k, combo.iter().filter(|&&v| v == k).count()))
                     );
-                    result.push(GCInfGen::new(x.clone(), u));
-                }
-            }
-        }
-        result.into_iter()
+                    GCInfGen::new(x.clone(), u)
+                })
+            })
+            .collect_vec()
     }
 
     fn differentiate_gen(&self, x: &GCGen) -> Vec<(GCGen, GridRect)> {
@@ -408,15 +410,15 @@ mod tests {
 
         let unit = MultiVar::<'U', usize>::default();
 
-        let gens_00: Vec<_> = cx.inf_gens(0, 0).collect();
+        let gens_00 = cx.inf_gens(0, 0);
         assert_eq!(gens_00.len(), 1);
         assert_eq!(gens_00[0].u, unit);
 
-        let gens_m1: Vec<_> = cx.inf_gens(-1, -1).collect();
+        let gens_m1 = cx.inf_gens(-1, -1);
         assert_eq!(gens_m1.len(), 1);
         assert_eq!(gens_m1[0].u, unit);
 
-        assert_eq!(cx.inf_gens(0, 1).count(), 0);
+        assert_eq!(cx.inf_gens(0, 1).len(), 0);
     }
 
     #[test]
@@ -426,16 +428,15 @@ mod tests {
         let cx = GridComplex::<GCMinus>::new(gd);
 
         // e=0 only: 1 raw gen × 1 monomial
-        assert_eq!(cx.inf_gens(0, 0).count(), 1);
+        assert_eq!(cx.inf_gens(0, 0).len(), 1);
 
         // e=0: nothing at (-2,-1); e=1: 1 raw gen at (0,0) × 2 monomials (U_0, U_1)
-        let gens = cx.inf_gens(-2, -1);
-        let v: Vec<_> = gens.collect();
+        let v = cx.inf_gens(-2, -1);
         assert_eq!(v.len(), 2);
         assert!(v.iter().all(|t| t.maslov_deg() == -2 && t.alex_deg() == -1));
 
         // e=2: 1 raw gen at (0,0) × 3 monomials (U_0^2, U_0*U_1, U_1^2)
-        let v: Vec<_> = cx.inf_gens(-4, -2).collect();
+        let v = cx.inf_gens(-4, -2);
         assert_eq!(v.len(), 3);
         assert!(v.iter().all(|t| t.maslov_deg() == -4 && t.alex_deg() == -2));
     }
