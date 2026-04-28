@@ -127,39 +127,29 @@ impl<V: GCType> GridComplex<V> {
     }
 
     fn differentiate_gen(&self, x: &GCGen) -> Vec<(GCGen, GridRect)> {
-        use itertools::Itertools;
-
         let n = self.grid_number();
         let grid_size = 2 * n;
         let pts = x.points();
-
         let mut seq = x.sequence();
-        let mut result = Vec::new();
 
-        for (i, j) in (0..n as usize).tuple_combinations() {
-            for &(p, q) in &[(pts[i], pts[j]), (pts[j], pts[i])] {
+        (0..n as usize).tuple_combinations()
+            .flat_map(|(i, j)| [(pts[i], pts[j]), (pts[j], pts[i])])
+            .filter_map(|(p, q)| {
                 let rect = GridRect::between(p, q, grid_size);
+                if rect.intersects(&pts, grid_size, true) { return None; }
+                if !V::is_admissible(&rect, &self.diagram, grid_size) { return None; }
 
-                if rect.intersects(&pts, grid_size, true) {
-                    continue;
-                }
-                if !V::is_admissible(&rect, &self.diagram, grid_size) {
-                    continue;
-                }
+                let ri = ((rect.origin.x / 2) % n) as usize;
+                let rj = ((rect.end().x  / 2) % n) as usize;
 
-                let ri = (rect.origin.x / 2) % n;
-                let rj = (rect.end().x / 2) % n;
-
-                seq.swap(ri as usize, rj as usize);
-                let y = self.gens.gen_from_seq(&seq);
-                seq.swap(ri as usize, rj as usize);
-
-                if let Some(y) = y {
-                    result.push((y.clone(), rect));
-                }
-            }
-        }
-        result
+                // MEMO: reuse seq to avoid cloning. 
+                seq.swap(ri, rj); 
+                let y = self.gens.gen_from_seq(&seq).cloned();
+                seq.swap(ri, rj);
+                
+                y.map(|g| (g, rect))
+            })
+            .collect()
     }
 }
 
