@@ -130,7 +130,11 @@ impl GCInfGen {
     }
 
     pub fn alex_deg(&self) -> isize {
-        self.gen.alex_deg - self.u.total_deg() as isize
+        self.gen.alex_deg + self.alg_deg()
+    }
+
+    pub fn alg_deg(&self) -> isize {
+        -(self.u.total_deg() as isize)
     }
 }
 
