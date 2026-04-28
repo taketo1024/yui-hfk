@@ -23,6 +23,7 @@ impl G0Calc {
         let mut candidates = Candidates::generate_from(g);
         candidates.deduplicate();
         candidates.filter_by_hfk(&hfk);
+        candidates.sort();
 
         G0Calc { gc, z, candidates }
     }
