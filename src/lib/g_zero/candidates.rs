@@ -107,6 +107,15 @@ impl Candidates {
         self.regions.retain(|s| !r.includes(s) && !rt.includes(s));
     }
 
+    /// Sorts candidates primarily by `right_end` (ascending), then by `Region::partial_cmp`
+    /// (smaller regions first; incomparable regions are treated as equal).
+    pub fn sort(&mut self) {
+        self.regions.sort_by(|a, b| {
+            a.right_end().cmp(&b.right_end())
+                .then_with(|| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+        });
+    }
+
     /// Filters candidates in place using the 4-genus g₄.
     ///
     /// Two conditions must hold for each candidate R:
