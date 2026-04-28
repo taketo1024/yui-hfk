@@ -98,6 +98,9 @@ impl Candidates {
 
         // Remove r, rᵀ, and all larger regions from the remaining candidates.
         self.regions.retain(|s| !s.includes(r) && !s.includes(&rt));
+        
+        // Sort accepted regions.
+        Self::sort_regions(&mut self.accepted);
     }
 
     /// Marks `r` as unrealizable: removes all candidates equal to or smaller than
@@ -110,7 +113,11 @@ impl Candidates {
     /// Sorts candidates primarily by `right_end` (ascending), then by `Region::partial_cmp`
     /// (smaller regions first; incomparable regions are treated as equal).
     pub fn sort(&mut self) {
-        self.regions.sort_by(|a, b| {
+        Self::sort_regions(&mut self.regions);
+    }
+
+    fn sort_regions(v: &mut Vec<Region>) {
+        v.sort_by(|a, b| {
             a.right_end().cmp(&b.right_end())
                 .then_with(|| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
         });
