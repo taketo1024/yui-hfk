@@ -104,6 +104,10 @@ impl GCGenSet {
         range_of(self.dict.keys().map(|&(_, a)| a))
     }
 
+    pub fn has_gen_at(&self, maslov: isize, alex: isize) -> bool {
+        self.dict.contains_key(&(maslov, alex))
+    }
+
     pub fn support(&self) -> impl Iterator<Item = &(isize, isize)> { 
         self.dict.keys()
     }
