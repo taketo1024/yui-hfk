@@ -37,8 +37,7 @@ impl GridComplex<GCFiltered> {
 
         // Replace dummy generators with actual generators from the diagram
         z.into_iter().filter_map(|(inf_gen, coeff)| {
-            let seq = inf_gen.gen.sequence();
-            self.gens.gen_from_seq(&seq).map(|actual| {
+            self.gens.gen_from_code(inf_gen.gen.code).map(|actual| {
                 (GCInfGen::new(actual.clone(), inf_gen.u), coeff)
             })
         }).collect()

@@ -44,16 +44,18 @@ impl GCGen {
 
     // Knuth, Volume 2, Section 3.3.2, Algorithm P
     pub fn encode(seq: &[u8]) -> usize {
-        let n = seq.len();
         let mut tmp = seq.to_vec();
-        let mut code = 0usize;
+        Self::encode_in_place(&mut tmp)
+    }
 
+    pub fn encode_in_place(tmp: &mut [u8]) -> usize {
+        let n = tmp.len();
+        let mut code = 0usize;
         for k in (0..n).rev() {
             let i = (0..=k).find(|&i| tmp[i] == k as u8).unwrap();
             code = code * (k + 1) + i;
             tmp.swap(i, k);
         }
-
         code
     }
 

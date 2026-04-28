@@ -93,8 +93,7 @@ impl GCGenSet {
         self.dict.get(&(maslov, alex)).map_or(&[], |r| &self.list[r.clone()])
     }
 
-    pub fn gen_from_seq(&self, seq: &[u8]) -> Option<&GCGen> {
-        let code = GCGen::encode(seq);
+    pub fn gen_from_code(&self, code: usize) -> Option<&GCGen> {
         self.code_index.get(&code).map(|&i| &self.list[i])
     }
 

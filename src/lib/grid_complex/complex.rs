@@ -130,7 +130,8 @@ impl<V: GCType> GridComplex<V> {
         let n = self.grid_number();
         let grid_size = 2 * n;
         let pts = x.points();
-        let mut seq = x.sequence();
+        let seq = x.sequence();
+        let mut tmp = vec![0u8; n as usize];
 
         (0..n as usize).tuple_combinations()
             .flat_map(|(i, j)| [(pts[i], pts[j]), (pts[j], pts[i])])
@@ -142,12 +143,11 @@ impl<V: GCType> GridComplex<V> {
                 let ri = ((rect.origin.x / 2) % n) as usize;
                 let rj = ((rect.end().x  / 2) % n) as usize;
 
-                // MEMO: reuse seq to avoid cloning. 
-                seq.swap(ri, rj); 
-                let y = self.gens.gen_from_seq(&seq).cloned();
-                seq.swap(ri, rj);
-                
-                y.map(|g| (g, rect))
+                tmp.copy_from_slice(&seq);
+                tmp.swap(ri, rj);
+
+                let code = GCGen::encode_in_place(&mut tmp);
+                self.gens.gen_from_code(code).cloned().map(|g| (g, rect))
             })
             .collect()
     }
