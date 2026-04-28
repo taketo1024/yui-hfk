@@ -8,7 +8,8 @@ use super::gen::GCGen;
 
 pub struct GCGenSet {
     list: Vec<GCGen>, // sorted by (alex_deg, maslov_deg)
-    dict: AHashMap<(isize, isize), Range<usize>>, // (maslov_deg, alex_deg) → range into inner
+    dict: AHashMap<(isize, isize), Range<usize>>, // (maslov_deg, alex_deg) → range into list
+    code_index: AHashMap<usize, usize>,            // code → index into list
 }
 
 impl GCGenSet {
@@ -59,8 +60,9 @@ impl GCGenSet {
 
         gens.sort();
         let by_deg = Self::build_index(&gens);
+        let code_index = gens.iter().enumerate().map(|(i, g)| (g.code, i)).collect();
 
-        GCGenSet { list: gens, dict: by_deg }
+        GCGenSet { list: gens, dict: by_deg, code_index }
     }
 
     fn build_index(gens: &[GCGen]) -> AHashMap<(isize, isize), Range<usize>> {
@@ -93,7 +95,7 @@ impl GCGenSet {
 
     pub fn gen_from_seq(&self, seq: &[u8]) -> Option<&GCGen> {
         let code = GCGen::encode(seq);
-        self.list.iter().find(|g| g.code == code)
+        self.code_index.get(&code).map(|&i| &self.list[i])
     }
 
     pub fn maslov_deg_range(&self) -> RangeInclusive<isize> {
