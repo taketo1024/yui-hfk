@@ -1,6 +1,7 @@
 use num_traits::Zero;
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
+use yui_core::poly::MultiVar;
 
 use crate::grid_complex::GCInfGen;
 
@@ -9,6 +10,7 @@ pub trait GCInfChainExt {
     fn maslov_degree(&self) -> isize;
     fn alex_degree(&self) -> isize;
     fn alg_degree(&self) -> isize;
+    fn mul(&self, u: &MultiVar<'U', usize>) -> Self;
 }
 
 impl GCInfChainExt for Lc<GCInfGen, FF2> {
@@ -44,6 +46,10 @@ impl GCInfChainExt for Lc<GCInfGen, FF2> {
             .map(|(g, _)| g.alg_deg())
             .max()
             .unwrap_or(0)
+    }
+
+    fn mul(&self, u: &MultiVar<'U', usize>) -> Self {
+        self.map_gens(|g| GCInfGen::new(g.gen.clone(), &g.u * u))
     }
 }
 
