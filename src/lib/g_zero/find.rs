@@ -1,6 +1,8 @@
+use log::debug;
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
-use yui_homology::Summand;
+use yui_homology::{Summand, SummandTrait};
+use yui_matrix::MatTrait;
 use yui_matrix::sparse::SpVec;
 use yui_matrix::sparse::pluq::solve_pluq;
 
@@ -22,13 +24,21 @@ impl GridComplex<GCFiltered> {
         assert!(z.is_maslov_homogeneous());
         let k = z.maslov_degree();
 
+        debug!("inflate generators ...");
         let gen_w = self.complementary_gens(k + 1, r); // space where w lives
+        debug!("  in-gens: {}", gen_w.rank());
+
         let gen_z = self.complementary_gens(k, r);     // space where z lives mod r
+        debug!("  out-gens: {}", gen_z.rank());
 
         let z0 = cutoff(z, r);
         let y  = gen_z.vectorize(&z0);
-        let a  = gen_w.make_matrix(&gen_z, |x| cutoff(&self.differentiate(x), r));
 
+        debug!("create matrix ...");
+        let a  = gen_w.make_matrix(&gen_z, |x| cutoff(&self.differentiate(x), r));
+        debug!("  a: {} x {}", a.nrows(), a.ncols());
+
+        debug!("solve linear system ...");
         let x_sol = solve_pluq(&a, &y.to_dense())?;
         let x_vec = SpVec::from(x_sol);
         let w = gen_w.devectorize(&x_vec);
