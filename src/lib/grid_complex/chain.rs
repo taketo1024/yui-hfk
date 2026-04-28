@@ -6,6 +6,7 @@ use crate::grid_complex::GCInfGen;
 
 pub trait GCInfChainExt {
     fn is_maslov_homogeneous(&self) -> bool;
+    fn maslov_degree(&self) -> isize;
     fn alex_degree(&self) -> isize;
     fn alg_degree(&self) -> isize;
 }
@@ -21,6 +22,14 @@ impl GCInfChainExt for Lc<GCInfGen, FF2> {
         }
     }
 
+    fn maslov_degree(&self) -> isize {
+        self.iter()
+            .filter(|(_, c)| !c.is_zero())
+            .map(|(g, _)| g.maslov_deg())
+            .max()
+            .unwrap_or(0)
+    }
+
     fn alex_degree(&self) -> isize {
         self.iter()
             .filter(|(_, c)| !c.is_zero())
@@ -32,7 +41,7 @@ impl GCInfChainExt for Lc<GCInfGen, FF2> {
     fn alg_degree(&self) -> isize {
         self.iter()
             .filter(|(_, c)| !c.is_zero())
-            .map(|(g, _)| -(g.u.total_deg() as isize))
+            .map(|(g, _)| g.alg_deg())
             .max()
             .unwrap_or(0)
     }
@@ -86,6 +95,22 @@ mod tests {
         let g2 = make_gen(1, 2, 4, 0, &[]);
         let lc = lc_of(&[g1, g2]);
         assert!(!lc.is_maslov_homogeneous());
+    }
+
+    #[test]
+    fn test_maslov_degree_empty() {
+        let z: Lc<GCInfGen, FF2> = Lc::new();
+        assert_eq!(z.maslov_degree(), 0);
+    }
+
+    #[test]
+    fn test_maslov_degree() {
+        // maslov_deg() = gen.maslov_deg - 2 * u.total_deg
+        let g1 = make_gen(0, 2, 4, 0, &[]);    // 4 - 0 = 4
+        let g2 = make_gen(1, 2, 6, 0, &[1]);   // 6 - 2 = 4
+        let g3 = make_gen(2, 2, 2, 0, &[]);    // 2 - 0 = 2
+        let lc = lc_of(&[g1, g2, g3]);
+        assert_eq!(lc.maslov_degree(), 4);
     }
 
     #[test]
