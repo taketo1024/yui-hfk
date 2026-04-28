@@ -24,44 +24,32 @@ impl GCInfChainExt for Lc<GCInfGen, FF2> {
         }
     }
 
-    fn maslov_degree(&self) -> isize {
-        self.iter()
-            .filter(|(_, c)| !c.is_zero())
-            .map(|(g, _)| g.maslov_deg())
-            .max()
-            .unwrap_or(0)
-    }
-
-    fn alex_degree(&self) -> isize {
-        self.iter()
-            .filter(|(_, c)| !c.is_zero())
-            .map(|(g, _)| g.alex_deg())
-            .max()
-            .unwrap_or(0)
-    }
-
-    fn alg_degree(&self) -> isize {
-        self.iter()
-            .filter(|(_, c)| !c.is_zero())
-            .map(|(g, _)| g.alg_deg())
-            .max()
-            .unwrap_or(0)
-    }
+    fn maslov_degree(&self) -> isize { max_deg(self, GCInfGen::maslov_deg) }
+    fn alex_degree(&self)   -> isize { max_deg(self, GCInfGen::alex_deg)   }
+    fn alg_degree(&self)    -> isize { max_deg(self, GCInfGen::alg_deg)    }
 
     fn mul(&self, u: &MultiVar<'U', usize>) -> Self {
         self.map_gens(|g| GCInfGen::new(g.gen.clone(), &g.u * u))
     }
 }
 
+fn max_deg(lc: &Lc<GCInfGen, FF2>, f: impl Fn(&GCInfGen) -> isize) -> isize {
+    lc.iter()
+        .filter(|(_, c)| !c.is_zero())
+        .map(|(g, _)| f(g))
+        .max()
+        .unwrap_or(0)
+}
+
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use num_traits::One;
     use yui_core::poly::MultiVar;
     use super::*;
     use crate::grid_complex::{GCGen, GCInfGen};
 
     // code distinguishes generators; grid_number must be >= u_degs.len()
-    fn make_gen(code: usize, grid_number: u8, maslov: isize, alex: isize, u_degs: &[usize]) -> GCInfGen {
+    pub fn make_gen(code: usize, grid_number: u8, maslov: isize, alex: isize, u_degs: &[usize]) -> GCInfGen {
         let base = GCGen::from_raw(code, grid_number, maslov, alex);
         let u = MultiVar::<'U', usize>::from_iter(
             u_degs.iter().copied().enumerate().filter(|(_, d)| *d > 0)
@@ -69,7 +57,7 @@ mod tests {
         GCInfGen::new(base, u)
     }
 
-    fn lc_of(gens: &[GCInfGen]) -> Lc<GCInfGen, FF2> {
+    pub fn lc_of(gens: &[GCInfGen]) -> Lc<GCInfGen, FF2> {
         gens.iter().cloned().map(|g| (g, FF2::one())).collect()
     }
 
