@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use super::args::AppArgs;
-use super::cmd::{gh, hfk};
+use super::cmd::{g0, gh, hfk};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -13,13 +13,15 @@ pub struct CliArgs {
 #[derive(Subcommand, Debug)]
 #[clap(rename_all = "lower")]
 pub enum Cmd {
+    G0(g0::Args),
     Gh(gh::Args),
     Hfk(hfk::Args),
 }
 
-impl CliArgs { 
-    fn app_args(&self) -> &dyn AppArgs { 
-        match &self.command { 
+impl CliArgs {
+    fn app_args(&self) -> &dyn AppArgs {
+        match &self.command {
+            Cmd::G0(args)  => args,
             Cmd::Gh(args)  => args,
             Cmd::Hfk(args) => args,
         }
@@ -42,6 +44,7 @@ impl App {
     pub fn run(&self) -> Result<String, Box<dyn std::error::Error>> {
         self.init_logger();
         match &self.args.command {
+            Cmd::G0(args)  => g0::dispatch(args),
             Cmd::Gh(args)  => gh::dispatch(args),
             Cmd::Hfk(args) => hfk::dispatch(args),
         }
