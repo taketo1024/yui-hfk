@@ -6,14 +6,23 @@ use crate::grid_complex::{GCFiltered, GCInfGen};
 use super::{Candidates, Region};
 
 pub struct G0Calc {
-    cx: GridComplex<GCFiltered>,
+    gc: GridComplex<GCFiltered>,
     z: Lc<GCInfGen, FF2>,
     candidates: Candidates,
 }
 
 impl G0Calc {
-    pub fn new(gd: GridDiagram, hfk: &HFK) -> Self {
-        todo!()
+    pub fn new(gd: GridDiagram) -> Self {
+        let hfk = HFK::from(&gd);
+        let gc = GridComplex::<GCFiltered>::new(gd);
+        let z = gc.hom_gen();
+
+        let g = hfk.genus() as usize;
+        let mut candidates = Candidates::generate_from(g);
+        candidates.deduplicate();
+        candidates.filter_by_hfk(&hfk);
+
+        G0Calc { gc, z, candidates }
     }
 
     /// Processes all remaining candidates and populates `candidates.accepted`.
