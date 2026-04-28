@@ -23,24 +23,44 @@ impl G0Calc {
         let g = hfk.genus() as usize;
         info!("g = {g}");
 
-        let mut candidates = Candidates::generate_from(g);
-        candidates.deduplicate();
-        candidates.filter_by_hfk(&hfk);
-        candidates.sort();
-
+        let candidates = Self::make_candidates(&gd, &hfk, g);
         info!("candidate regions: {}", candidates.regions.len());
         for r in &candidates.regions {
             info!("  {r}");
         }
 
         info!("prepare generators ...");
-        let gc = GridComplex::<GCFiltered>::new(gd);
+        let gc = Self::build_complex(gd, &candidates);
         info!("  #generators: {}", gc.gens.len());
 
         info!("compute homological generator");
         let z = gc.hom_gen();
 
         G0Calc { gc, z, candidates }
+    }
+
+    fn make_candidates(gd: &GridDiagram, hfk: &HFK, g: usize) -> Candidates { 
+        let mut candidates = Candidates::generate_from(g);
+        candidates.deduplicate();
+        candidates.filter_by_hfk(&hfk);
+        candidates.sort();
+        candidates
+    }
+
+    fn build_complex(gd: GridDiagram, candidates: &Candidates) -> GridComplex<GCFiltered> {
+        let s_max = candidates.regions.iter()
+            .map(|r| r.right_end().max(0))
+            .max()
+            .unwrap_or(0);
+        let s_range = -2 * s_max ..= 1;
+
+        GridComplex::new_filtered(gd, |x| {
+            if !s_range.contains(&x.maslov_deg) { return false; }
+            let s = -(x.maslov_deg.div_euclid(2)); // >= 0
+            candidates.regions.iter()
+                .filter(|r| r.right_end() == s)
+                .any(|r| !r.contains((s, x.alex_deg + s))) // equivalent to: !r.shift(-s, -s).contains(0, x.alex_deg)
+        })
     }
 
     /// Processes all remaining candidates and populates `candidates.accepted`.
