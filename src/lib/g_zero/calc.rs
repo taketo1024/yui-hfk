@@ -71,6 +71,11 @@ impl G0Calc {
         }
     }
 
+    pub fn filter_by_g4(&mut self, g4: usize) {
+        self.candidates.filter_by_g4(g4);
+        info!("g4 = {g4}, regions: {}", self.candidates.regions.len());
+    }
+
     pub fn accepted(&self) -> &[Region] {
         &self.candidates.accepted
     }
