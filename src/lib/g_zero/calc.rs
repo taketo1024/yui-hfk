@@ -23,7 +23,7 @@ impl G0Calc {
         let g = hfk.genus() as usize;
         info!("g = {g}");
 
-        let candidates = Self::make_candidates(&gd, &hfk, g);
+        let candidates = Self::make_candidates(&hfk, g);
         info!("candidate regions: {}", candidates.regions.len());
         for r in &candidates.regions {
             info!("  {r}");
@@ -39,7 +39,7 @@ impl G0Calc {
         G0Calc { gc, z, candidates }
     }
 
-    fn make_candidates(gd: &GridDiagram, hfk: &HFK, g: usize) -> Candidates { 
+    fn make_candidates(hfk: &HFK, g: usize) -> Candidates { 
         let mut candidates = Candidates::generate_from(g);
         candidates.deduplicate();
         candidates.filter_by_hfk(&hfk);
