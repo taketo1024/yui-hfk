@@ -136,19 +136,16 @@ impl Region {
         Region::new(self.corners.iter().copied().chain(std::iter::once(c)))
     }
 
-    /// Remove corner `c` and replace it with (c.i-1, c.j) and (c.i, c.j-1).
-    pub fn cut_off(&self, c: Corner) -> Region {
-        let mut cs: Vec<Corner> = self.corners.iter().filter(|&&x| x != c).copied().collect();
-        cs.push(Corner::new(c.i - 1, c.j));
-        cs.push(Corner::new(c.i, c.j - 1));
-        Region::new(cs)
-    }
-
     /// The corner with the smallest i > c.i, if any.
     pub fn corner_next_to(&self, c: Corner) -> Option<&Corner> {
         self.corners.iter()
             .filter(|&&x| x.i > c.i)
             .min_by_key(|x| x.i)
+    }
+
+    // Drop terms of `z` whose (alg_deg, alex_deg) is inside self.
+    pub fn cutoff(&self, z: &Lc<GCInfGen, FF2>) -> Lc<GCInfGen, FF2> {
+        z.filter_gens(|g| !self.contains_gen(g))
     }
 
     // ---- internal ----
@@ -192,6 +189,8 @@ impl fmt::Display for Region {
 
 #[cfg(test)]
 mod tests {
+    use crate::grid_complex::chain::tests::{lc_of, make_gen};
+
     use super::*;
 
     #[test]
@@ -228,12 +227,38 @@ mod tests {
         assert_eq!(r1.partial_cmp(&r3), None);
     }
 
+    // ---- cutoff tests ----
+
     #[test]
-    fn test_cut_off() {
-        let r = Region::new([Corner::new(1, 2), Corner::new(0, 3)]);
-        let cut = r.cut_off(Corner::new(1, 2));
-        // Replaces (1,2) with (0,2) and (1,1); then reduces with (0,3)
-        assert!(cut.corners().contains(&Corner::new(0, 3)));
+    fn test_cutoff_empty() {
+        let r = Region::simple(0, 0);
+        let z: Lc<GCInfGen, FF2> = Lc::new();
+        assert!(r.cutoff(&z).is_zero());
     }
 
+    #[test]
+    fn test_cutoff_drops_inside_keeps_outside() {
+        // g_in:  (alg=0, alex=0)  → inside  R(0,0)  → dropped
+        // g_out: (alg=0, alex=1)  → outside R(0,0) (alex 1 > 0) → kept
+        let g_in  = make_gen(0, 2, 0, 0, &[]);  // alg=0, alex=0
+        let g_out = make_gen(1, 2, 0, 1, &[]);  // alg=0, alex=1
+        let lc = lc_of(&[g_in, g_out.clone()]);
+        let r = Region::simple(0, 0);
+        let result = r.cutoff(&lc);
+        // Only g_out should remain
+        assert_eq!(result.nterms(), 1);
+        assert!(!result.coeff(&g_out).is_zero());
+    }
+
+    #[test]
+    fn test_cutoff_all_outside() {
+        // U^1 generator: alg = -1, alex = alex_raw - 1
+        // With alex_raw=2: alex = 1, coord = (-1, 1) → outside R(0,0)? -1 ≤ 0 and 1 > 0 → outside
+        let g = make_gen(0, 2, 0, 2, &[1]); // alg=-1, alex=2-1=1
+        let lc = lc_of(&[g.clone()]);
+        let r = Region::simple(0, 0);
+        let result = r.cutoff(&lc);
+        assert_eq!(result.nterms(), 1);
+        assert!(!result.coeff(&g).is_zero());
+    }
 }

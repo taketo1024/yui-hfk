@@ -27,7 +27,7 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
     let gd = load_diagram(&args.knot)?;
     let gd = if args.mirror { gd.rotate90() } else { gd };
 
-    let mut calc = G0Calc::new(gd);
+    let mut calc = G0Calc::new(gd, true, true);
     if let Some(g4) = args.g4 {
         calc.filter_by_g4(g4);
     }
