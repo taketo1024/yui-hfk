@@ -1,4 +1,4 @@
-use yui_hfk::G0Calc;
+use yui_hfk::{G0Calc, G0CalcConfig};
 use crate::app::{AppArgs, utils::load_diagram};
 
 #[derive(Clone, Debug, clap::Args)]
@@ -27,7 +27,7 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
     let gd = load_diagram(&args.knot)?;
     let gd = if args.mirror { gd.rotate90() } else { gd };
 
-    let mut calc = G0Calc::new(gd, true, true);
+    let mut calc = G0Calc::new(gd, G0CalcConfig::default());
     if let Some(g4) = args.g4 {
         calc.filter_by_g4(g4);
     }

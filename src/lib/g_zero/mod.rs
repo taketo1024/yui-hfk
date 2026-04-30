@@ -7,4 +7,4 @@ pub mod candidates;
 pub use region::{Corner, Region};
 pub use screen::Screen;
 pub use candidates::Candidates;
-pub use calc::G0Calc;
+pub use calc::{G0Calc, G0CalcConfig};

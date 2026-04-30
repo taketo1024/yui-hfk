@@ -13,6 +13,17 @@ use crate::grid_complex::{GCFiltered, GCInfGen};
 use crate::grid_complex::chain::GCInfChainExt;
 use super::{Candidates, Region};
 
+pub struct G0CalcConfig {
+    pub filter_regions: bool,
+    pub filter_gens: bool,
+}
+
+impl Default for G0CalcConfig {
+    fn default() -> Self {
+        Self { filter_regions: true, filter_gens: true }
+    }
+}
+
 pub struct G0Calc {
     gc: GridComplex<GCFiltered>,
     z: Lc<GCInfGen, FF2>,
@@ -20,7 +31,7 @@ pub struct G0Calc {
 }
 
 impl G0Calc {
-    pub fn new(gd: GridDiagram, filter_regions: bool, filter_gens: bool) -> Self {
+    pub fn new(gd: GridDiagram, config: G0CalcConfig) -> Self {
         info!("compute HFK ...");
         let hfk = HFK::from(&gd);
         info!("HFK:\n{}", hfk.display_table("M", "A"));
@@ -28,14 +39,14 @@ impl G0Calc {
         let g = hfk.genus() as usize;
         info!("g = {g}");
 
-        let candidates = Self::make_candidates(&hfk, g, filter_regions);
+        let candidates = Self::make_candidates(&hfk, g, config.filter_regions);
         info!("candidate regions: {}", candidates.regions.len());
         for r in &candidates.regions {
             info!("  {r}");
         }
 
         info!("prepare generators ...");
-        let gc = Self::build_complex(gd, &candidates, filter_gens);
+        let gc = Self::build_complex(gd, &candidates, config.filter_gens);
         info!("  #generators: {}", gc.gens.len());
 
         info!("compute homological generator");
@@ -184,7 +195,8 @@ mod tests {
         // so z0 = cutoff(z, R(0,0)) = 0.  The system is trivially satisfied
         // with w = 0, and the function returns z unchanged.
         let gd = GridDiagram::unknot();
-        let calc = G0Calc::new(gd, false, false);
+        let cfg = G0CalcConfig { filter_regions: false, filter_gens: false };
+        let calc = G0Calc::new(gd, cfg);
         let cx = calc.complex();
         let z = cx.hom_gen();
 
@@ -202,7 +214,8 @@ mod tests {
     fn test_find_homologous_unknot_none() {
         // R[(-1,0), (0,-1)] lies strictly below the hom_gen at (0,0).
         let gd = GridDiagram::unknot();
-        let calc = G0Calc::new(gd, false, false);
+        let cfg = G0CalcConfig { filter_regions: false, filter_gens: false };
+        let calc = G0Calc::new(gd, cfg);
         let cx = calc.complex();
         let z = cx.hom_gen();
         
@@ -219,7 +232,8 @@ mod tests {
         // For the trefoil (genus 1), R(0,1) is the expected realizable region.
         // find_homologous should return Some(z1) where z1 is a cycle inside R(0,1).
         let gd = GridDiagram::trefoil();
-        let calc = G0Calc::new(gd, false, false);
+        let cfg = G0CalcConfig { filter_regions: false, filter_gens: false };
+        let calc = G0Calc::new(gd, cfg);
         let cx = calc.complex();
         let z = cx.hom_gen();
         assert!(!z.is_zero());
@@ -233,7 +247,8 @@ mod tests {
     }
 
     fn accepted(gd: GridDiagram) -> Vec<Region> {
-        let mut calc = G0Calc::new(gd, false, false);
+        let cfg = G0CalcConfig { filter_regions: false, filter_gens: false };
+        let mut calc = G0Calc::new(gd, cfg);
         calc.run();
 
         let mut rs = calc.accepted().to_vec();

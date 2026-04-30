@@ -14,4 +14,4 @@ pub mod misc;
 pub use hfk::HFK;
 pub use grid_diagram::{GridDiagram, GridPoint, GridRect};
 pub use grid_complex::{GCGen, GridComplex, GCType, GCTilde, GCHat, GCMinus, GCFiltered};
-pub use g_zero::G0Calc;
+pub use g_zero::{G0Calc, G0CalcConfig};
