@@ -5,7 +5,7 @@ use yui_core::num::FF2;
 use yui_core::poly::MultiVar;
 use yui_homology::SummandTrait;
 use yui_matrix::MatTrait;
-use yui_matrix::sparse::SpVec;
+use yui_matrix::sparse::{SpMat, SpVec};
 use yui_matrix::sparse::pluq::solve_pluq;
 
 use crate::{GridComplex, GridDiagram, HFK};
@@ -169,15 +169,21 @@ impl G0Calc {
         let a  = gen_w.make_matrix(&gen_z, |x| r.cutoff(&self.gc.differentiate(x)));
         debug!("  a: {} x {}", a.nrows(), a.ncols());
 
-        debug!("solve linear system ...");
-        let x_sol = solve_pluq(&a, &y.to_dense())?;
-        let x_vec = SpVec::from(x_sol);
-        let w = gen_w.devectorize(&x_vec);
+        let x_sol = self.find_sol(&a, &y)?;
+        let w = gen_w.devectorize(&x_sol);
 
         // z - d(w) is homologous to z and lies inside r.
         let mut z1 = z.clone();
         z1 -= &self.gc.differentiate(&w);
         Some(z1)
+    }
+
+    fn find_sol(&self, a: &SpMat<FF2>, y: &SpVec<FF2>) -> Option<SpVec<FF2>> { 
+        debug!("solve linear system ...");
+
+        let x_sol = solve_pluq(&a, &y.to_dense())?;
+
+        Some(SpVec::from(x_sol))
     }
 }
 
