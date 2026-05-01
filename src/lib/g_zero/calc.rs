@@ -6,7 +6,7 @@ use yui_core::poly::MultiVar;
 use yui_homology::SummandTrait;
 use yui_matrix::MatTrait;
 use yui_matrix::sparse::{SpMat, SpVec};
-use yui_matrix::sparse::pluq::solve_pluq;
+use yui_matrix::sparse::pluq::{solve_pluq, solve_pluq_incr};
 
 use crate::{GridComplex, GridDiagram, HFK};
 use crate::grid_complex::{GCFiltered, GCInfGen};
@@ -16,11 +16,18 @@ use super::{Candidates, Region};
 pub struct G0CalcConfig {
     pub filter_regions: bool,
     pub filter_gens: bool,
+    pub max_piv: usize,
+    pub chunk: usize,
 }
 
 impl Default for G0CalcConfig {
     fn default() -> Self {
-        Self { filter_regions: true, filter_gens: true }
+        Self {
+            filter_regions: true,
+            filter_gens: true,
+            max_piv: 500_000,
+            chunk: 100_000,
+        }
     }
 }
 
@@ -28,6 +35,8 @@ pub struct G0Calc {
     gc: GridComplex<GCFiltered>,
     z: Lc<GCInfGen, FF2>,
     candidates: Candidates,
+    max_piv: usize,
+    chunk: usize,
 }
 
 impl G0Calc {
@@ -57,7 +66,7 @@ impl G0Calc {
         }
 
 
-        G0Calc { gc, z, candidates }
+        G0Calc { gc, z, candidates, max_piv: config.max_piv, chunk: config.chunk }
     }
 
     fn make_candidates(hfk: &HFK, g: usize, filter_regions: bool) -> Candidates { 
@@ -178,12 +187,18 @@ impl G0Calc {
         Some(z1)
     }
 
-    fn find_sol(&self, a: &SpMat<FF2>, y: &SpVec<FF2>) -> Option<SpVec<FF2>> { 
+    fn find_sol(&self, a: &SpMat<FF2>, y: &SpVec<FF2>) -> Option<SpVec<FF2>> {
         debug!("solve linear system ...");
 
-        let x_sol = solve_pluq(&a, &y.to_dense())?;
+        let y = y.to_dense();
 
-        Some(SpVec::from(x_sol))
+        let x = if a.nrows() < self.chunk { 
+            solve_pluq(a, &y)
+        } else {
+            solve_pluq_incr(&a, &y, self.max_piv, self.chunk)
+        }?;
+
+        Some(SpVec::from(x))
     }
 }
 
@@ -201,7 +216,7 @@ mod tests {
         // so z0 = cutoff(z, R(0,0)) = 0.  The system is trivially satisfied
         // with w = 0, and the function returns z unchanged.
         let gd = GridDiagram::unknot();
-        let cfg = G0CalcConfig { filter_regions: false, filter_gens: false };
+        let cfg = G0CalcConfig { filter_regions: false, filter_gens: false, ..Default::default() };
         let calc = G0Calc::new(gd, cfg);
         let cx = calc.complex();
         let z = cx.hom_gen();
@@ -220,7 +235,7 @@ mod tests {
     fn test_find_homologous_unknot_none() {
         // R[(-1,0), (0,-1)] lies strictly below the hom_gen at (0,0).
         let gd = GridDiagram::unknot();
-        let cfg = G0CalcConfig { filter_regions: false, filter_gens: false };
+        let cfg = G0CalcConfig { filter_regions: false, filter_gens: false, ..Default::default() };
         let calc = G0Calc::new(gd, cfg);
         let cx = calc.complex();
         let z = cx.hom_gen();
@@ -238,7 +253,7 @@ mod tests {
         // For the trefoil (genus 1), R(0,1) is the expected realizable region.
         // find_homologous should return Some(z1) where z1 is a cycle inside R(0,1).
         let gd = GridDiagram::trefoil();
-        let cfg = G0CalcConfig { filter_regions: false, filter_gens: false };
+        let cfg = G0CalcConfig { filter_regions: false, filter_gens: false, ..Default::default() };
         let calc = G0Calc::new(gd, cfg);
         let cx = calc.complex();
         let z = cx.hom_gen();
@@ -253,7 +268,7 @@ mod tests {
     }
 
     fn accepted(gd: GridDiagram) -> Vec<Region> {
-        let cfg = G0CalcConfig { filter_regions: false, filter_gens: false };
+        let cfg = G0CalcConfig { filter_regions: false, filter_gens: false, ..Default::default() };
         let mut calc = G0Calc::new(gd, cfg);
         calc.run();
 

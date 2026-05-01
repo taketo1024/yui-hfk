@@ -22,6 +22,14 @@ pub struct Args {
     #[arg(long)]
     pub g4: Option<usize>,
 
+    /// Cap on the sparse pre-PLUQ pivot count in the linear solver
+    #[arg(long)]
+    pub max_piv: Option<usize>,
+
+    /// Schur-complement chunk size in the incremental solver
+    #[arg(long)]
+    pub chunk: Option<usize>,
+
     /// Log level: 0=off, 1=info, 2=debug, 3=trace
     #[arg(long, default_value = "0")]
     pub log: u8,
@@ -35,9 +43,12 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
     let gd = load_diagram(&args.knot)?;
     let gd = if args.mirror { gd.rotate90() } else { gd };
 
+    let defaults = G0CalcConfig::default();
     let config = G0CalcConfig {
         filter_regions: !args.no_filter_regions,
         filter_gens:    !args.no_filter_gens,
+        max_piv:        args.max_piv.unwrap_or(defaults.max_piv),
+        chunk:          args.chunk.unwrap_or(defaults.chunk),
     };
     let mut calc = G0Calc::new(gd, config);
     if let Some(g4) = args.g4 {
