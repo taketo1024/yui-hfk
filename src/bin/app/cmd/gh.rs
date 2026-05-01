@@ -51,17 +51,17 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
         GHType::Tilde => {
             buff.push_str("GH~ (Tilde):\n");
             let h = GridComplex::<GCTilde>::new_filtered(diagram, pred).into_homology();
-            buff.push_str(&h.display_table("M", "A"));
+            buff.push_str(&h.display_table());
         }
         GHType::Hat => {
             buff.push_str("GH^ (Hat):\n");
             let h = GridComplex::<GCHat>::new_filtered(diagram, pred).into_homology();
-            buff.push_str(&h.display_table("M", "A"));
+            buff.push_str(&h.display_table());
         }
         GHType::Minus => {
             buff.push_str("GH- (Minus):\n");
             let h = GridComplex::<GCMinus>::new_filtered(diagram, pred).into_homology();
-            buff.push_str(&h.display_table("M", "A"));
+            buff.push_str(&h.display_table());
         }
     }
 

@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::ops::RangeInclusive;
 use itertools::Itertools;
@@ -165,9 +166,7 @@ impl GridComplex<GCTilde> {
     }
 
     pub fn into_complex(self) -> ChainComplex2<GCGen, FF2> {
-        let support: Vec<isize2> = self.gens.alex_deg_range().rev().flat_map(|j| 
-            self.gens.maslov_deg_range().rev().map(move |i| isize2(i, j))
-        ).collect();
+        let support = self.gens.support().map(|&(i, j)| isize2(i, j)).collect::<HashSet<_>>();
 
         let this = &self;
         let summands = {

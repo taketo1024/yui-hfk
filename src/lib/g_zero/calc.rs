@@ -3,7 +3,7 @@ use num_traits::Zero;
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
 use yui_core::poly::MultiVar;
-use yui_homology::SummandTrait;
+use yui_homology::{DisplayTable, SummandTrait};
 use yui_matrix::MatTrait;
 use yui_matrix::sparse::{SpMat, SpVec};
 use yui_matrix::sparse::pluq::{solve_pluq, solve_pluq_incr};
@@ -43,7 +43,7 @@ impl G0Calc {
     pub fn new(gd: GridDiagram, config: G0CalcConfig) -> Self {
         info!("compute HFK ...");
         let hfk = HFK::from(&gd);
-        info!("HFK:\n{}", hfk.display_table("M", "A"));
+        info!("HFK:\n{}", hfk.display_table());
 
         let g = hfk.genus() as usize;
         info!("g = {g}");

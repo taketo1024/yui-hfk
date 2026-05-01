@@ -1,4 +1,5 @@
 use yui_hfk::HFK;
+use yui_homology::DisplayTable;
 use crate::app::{AppArgs, utils::load_diagram};
 
 #[derive(Clone, Debug, clap::Args)]
@@ -23,5 +24,5 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
     let gd= load_diagram(&args.knot)?;
     let gd = if args.mirror { gd.rotate90() } else { gd };
     let h = HFK::from(&gd);
-    Ok(h.display_table("M", "A"))
+    Ok(h.display_table())
 }

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::ops::Index;
+use std::ops::{Index, RangeInclusive};
 
 use delegate::delegate;
 use itertools::Itertools;
@@ -27,11 +27,17 @@ impl HFK {
         HFK { data }
     }
 
+    pub fn maslov_deg_range(&self) -> RangeInclusive<isize> { 
+        range_of(self.data.support().map(|x| x.0))
+    }
+
+    pub fn alex_deg_range(&self) -> RangeInclusive<isize> { 
+        range_of(self.data.support().map(|x| x.1))
+    }
+
     delegate! { 
         to self.data { 
             pub fn iter(&self) -> impl Iterator<Item = (isize2, &usize)>;
-            pub fn display_table(&self, l1: &str, l2: &str) -> String;
-            pub fn print_table(&self, l1: &str, l2: &str);
         }
     }
 }
@@ -106,6 +112,24 @@ impl Index<(isize, isize)> for HFK {
     type Output = usize;
     fn index(&self, index: (isize, isize)) -> &Self::Output {
         &self.data[index]
+    }
+}
+
+impl DisplayTable<isize> for HFK {
+    fn display_labels(&self) -> (String, String) { 
+        ("M".to_string(), "A".to_string())
+    }
+
+    fn display_indices(&self) -> (Vec<isize>, Vec<isize>) { 
+        (self.maslov_deg_range().collect(), self.alex_deg_range().collect())
+    }
+
+    fn display_at(&self, i: &isize, j: &isize) -> String { 
+        if self[(*i, *j)].is_zero() { 
+            ".".to_string()
+        } else { 
+            self[(*i, *j)].to_string()
+        }
     }
 }
 
