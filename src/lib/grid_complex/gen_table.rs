@@ -51,9 +51,10 @@ impl GCGenSet {
             let m_deg = x.maslov_deg + 2 * (n_o - c) - 1;
             let a_deg = x.alex_deg + n_o - n_x;
 
-            x = GCGen::from_raw(GCGen::encode(&seq), n, m_deg, a_deg);
+            x = GCGen::from_raw(0, n, m_deg, a_deg);
 
             if pred(&x) {
+                x.code = GCGen::encode(&seq);
                 gens.push(x.clone());
             }
         }
