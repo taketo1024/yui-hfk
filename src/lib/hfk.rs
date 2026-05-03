@@ -50,7 +50,7 @@ impl From<&GridDiagram> for HFK {
         let m_range = cx.maslov_deg_range();
         let a_range = cx.alex_deg_range();
         let support = cx.gens.support().copied().collect_vec();
-        let h = cx.into_homology();
+        let h = cx.into_complex().reduced_generic().homology();
 
         // collect ranks of GH-tilde. 
         let mut ranks: HashMap<(isize, isize), usize> = support.into_iter()
