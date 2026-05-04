@@ -7,7 +7,7 @@ use crate::misc::heap::heap_transpositions;
 use super::gen::GCGen;
 
 pub struct GCGenSet {
-    list: Vec<GCGen>, // sorted by (alex_deg, maslov_deg)
+    list: Vec<GCGen>, // gens at the same bidegree are contiguous; global order is unspecified
     dict: AHashMap<(isize, isize), Range<usize>>, // (maslov_deg, alex_deg) → range into list
     code_index: AHashMap<usize, usize>,            // code → index into list
 }
@@ -22,13 +22,13 @@ impl GCGenSet {
         let size = 2 * n;
         let trans = heap_transpositions(n);
 
-        let mut gens: Vec<GCGen> = Vec::new();
+        let mut buckets: AHashMap<(isize, isize), Vec<GCGen>> = AHashMap::new();
         let mut seq: Vec<u8> = (0..n).collect();
         let mut x = GCGen::new(diagram, &seq);
         let mut pts = x.points();
 
         if pred(&x) {
-            gens.push(x.clone());
+            buckets.entry((x.maslov_deg, x.alex_deg)).or_default().push(x.clone());
         }
 
         for (i, j) in trans {
@@ -55,27 +55,27 @@ impl GCGenSet {
 
             if pred(&x) {
                 x.code = GCGen::encode(&seq);
-                gens.push(x.clone());
+                buckets.entry((m_deg, a_deg)).or_default().push(x.clone());
             }
         }
 
-        gens.sort();
-        let by_deg = Self::build_index(&gens);
-        let code_index = gens.iter().enumerate().map(|(i, g)| (g.code, i)).collect();
+        let total: usize = buckets.values().map(Vec::len).sum();
+        let num_buckets = buckets.len();
 
-        GCGenSet { list: gens, dict: by_deg, code_index }
-    }
+        let (list, dict) = buckets.into_iter().fold(
+            (Vec::<GCGen>::with_capacity(total), AHashMap::with_capacity(num_buckets)),
+            |(mut list, mut dict), (key, bucket)| {
+                let start = list.len();
+                list.extend(bucket);
+                dict.insert(key, start..list.len());
+                (list, dict)
+            },
+        );
+        let code_index: AHashMap<usize, usize> = list.iter().enumerate()
+            .map(|(i, g)| (g.code, i))
+            .collect();
 
-    fn build_index(gens: &[GCGen]) -> AHashMap<(isize, isize), Range<usize>> {
-        let mut by_deg = AHashMap::new();
-        let mut i = 0;
-        while i < gens.len() {
-            let key = (gens[i].maslov_deg, gens[i].alex_deg);
-            let j = i + gens[i..].partition_point(|g| g.maslov_deg == key.0 && g.alex_deg == key.1);
-            by_deg.insert(key, i..j);
-            i = j;
-        }
-        by_deg
+        GCGenSet { list, dict, code_index }
     }
 
     pub fn len(&self) -> usize {
