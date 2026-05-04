@@ -44,7 +44,7 @@ impl HFK {
 
 impl From<&GridDiagram> for HFK {
     fn from(gd: &GridDiagram) -> Self {
-        let n = gd.grid_number();
+        let n = gd.grid_number() as usize;
 
         let cx = GridComplex::<GCTilde>::new_filtered(gd.clone(), |x| x.alex_deg >= 0);
         let m_range = cx.maslov_deg_range();
@@ -71,7 +71,7 @@ impl From<&GridDiagram> for HFK {
                     if k > j { break }
                     
                     let t = ranks.get_mut(&(i - k, j - k)).unwrap();
-                    *t -= r * binomial(n - 1, k as u8) as usize;
+                    *t -= r * binomial(n - 1, k as usize);
                 }
             }
         }
