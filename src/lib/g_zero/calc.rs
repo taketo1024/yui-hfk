@@ -111,8 +111,12 @@ impl G0Calc {
         })
     }
 
-    pub fn complex(&self) -> &GridComplex<GCFiltered> { 
+    pub fn complex(&self) -> &GridComplex<GCFiltered> {
         &self.gc
+    }
+
+    pub fn genus(&self) -> usize {
+        self.g
     }
 
     /// Processes all remaining candidates and populates `candidates.accepted`.
@@ -266,7 +270,8 @@ impl G0Calc {
         }?;
         let x = SpVec::from(x);
 
-        // assert_eq!(&(a * &x), y);
+        debug!("validate solution..");
+        assert_eq!(&(a * &x), y);
 
         Some(x)
     }
