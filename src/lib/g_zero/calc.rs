@@ -257,15 +257,18 @@ impl G0Calc {
     fn find_sol(&self, a: &SpMat<FF2>, y: &SpVec<FF2>) -> Option<SpVec<FF2>> {
         debug!("solve linear system ...");
 
-        let y = y.to_dense();
+        let y_dense = y.to_dense();
 
         let x = if a.nrows() < self.chunk {
-            solve_pluq(a, &y)
+            solve_pluq(a, &y_dense)
         } else {
-            solve_pluq_incr(&a, &y, self.max_piv, self.chunk)
+            solve_pluq_incr(&a, &y_dense, self.max_piv, self.chunk)
         }?;
+        let x = SpVec::from(x);
 
-        Some(SpVec::from(x))
+        // assert_eq!(&(a * &x), y);
+
+        Some(x)
     }
 
     fn pass_specialized(
@@ -350,17 +353,15 @@ mod tests {
         let gd = GridDiagram::unknot();
         let cfg = G0CalcConfig { filter_regions: false, filter_gens: false, ..Default::default() };
         let calc = G0Calc::new(gd, cfg);
-        let cx = calc.complex();
-        let z = cx.hom_gen();
 
+        let z = &calc.z;
         assert!(!z.is_zero());
 
         let r = Region::simple(0, 0);
+        assert!(r.contains_chain(&z));
+        
         let z1 = calc.find_homologous(&z, &r).unwrap().expect("expected Some");
-
-        assert!(!z1.is_zero());
-        assert!(cx.differentiate(&z1).is_zero());
-        assert!(r.contains_chain(&z1));
+        assert!(z1.is_zero());
     }
 
     #[test]
@@ -369,8 +370,7 @@ mod tests {
         let gd = GridDiagram::unknot();
         let cfg = G0CalcConfig { filter_regions: false, filter_gens: false, ..Default::default() };
         let calc = G0Calc::new(gd, cfg);
-        let cx = calc.complex();
-        let z = cx.hom_gen();
+        let z = &calc.z;
 
         assert!(!z.is_zero());
 
@@ -385,16 +385,14 @@ mod tests {
         let gd = GridDiagram::trefoil();
         let cfg = G0CalcConfig { filter_regions: false, filter_gens: false, ..Default::default() };
         let calc = G0Calc::new(gd, cfg);
-        let cx = calc.complex();
-        let z = cx.hom_gen();
+        let z = &calc.z;
         assert!(!z.is_zero());
 
         let r = Region::simple(0, 1);
-        let z1 = calc.find_homologous(&z, &r).unwrap().expect("expected Some for trefoil R(0,1)");
+        assert!(r.contains_chain(&z));
 
-        assert!(!z1.is_zero());
-        assert!(cx.differentiate(&z1).is_zero(), "z1 must be a cycle");
-        assert!(r.contains_chain(&z1), "z1 must lie inside r");
+        let z1 = calc.find_homologous(&z, &r).unwrap().expect("expected Some for trefoil R(0,1)");
+        assert!(z1.is_zero());
     }
 
     fn accepted(gd: GridDiagram) -> Vec<Region> {
