@@ -18,6 +18,10 @@ pub struct Args {
     #[arg(long)]
     pub no_filter_gens: bool,
 
+    /// Expected genus; aborts if it disagrees with the computed value
+    #[arg(long)]
+    pub g: Option<usize>,
+
     /// Filter candidates using the 4-genus bound
     #[arg(long)]
     pub g4: Option<usize>,
@@ -60,6 +64,14 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
         chunk:          args.chunk.unwrap_or(defaults.chunk),
     };
     let mut calc = G0Calc::new(gd, config);
+    if let Some(g) = args.g {
+        if g != calc.genus() {
+            return Err(format!(
+                "expected genus g = {g}, but computed g = {}",
+                calc.genus()
+            ).into());
+        }
+    }
     if let Some(g4) = args.g4 {
         calc.filter_by_g4(g4);
     }
