@@ -127,6 +127,10 @@ impl GCInfGen {
         GCInfGen { u, gen }
     }
 
+    pub fn from_raw(gen: GCGen) -> Self {
+        GCInfGen::new(gen, MultiVar::default())
+    }
+
     pub fn maslov_deg(&self) -> isize {
         self.gen.maslov_deg - 2 * self.u.total_deg() as isize
     }
@@ -137,6 +141,12 @@ impl GCInfGen {
 
     pub fn alg_deg(&self) -> isize {
         -(self.u.total_deg() as isize)
+    }
+}
+
+impl From<GCGen> for GCInfGen {
+    fn from(gen: GCGen) -> Self {
+        Self::from_raw(gen)
     }
 }
 
