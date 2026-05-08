@@ -16,6 +16,7 @@ use super::{Candidates, Corner, Region};
 pub struct G0CalcConfig {
     pub filter_regions: bool,
     pub filter_gens: bool,
+    pub try_fast_ng: bool,
     pub max_size: usize,
     pub max_piv: usize,
     pub chunk: usize,
@@ -26,6 +27,7 @@ impl Default for G0CalcConfig {
         Self {
             filter_regions: true,
             filter_gens: true,
+            try_fast_ng: false,
             max_size: 1_000_000,
             max_piv: 500_000,
             chunk: 100_000,
@@ -44,6 +46,7 @@ pub struct G0Calc {
     g: usize,
     z: Lc<GCInfGen, FF2>,
     candidates: Candidates,
+    try_fast_ng: bool,
     max_size: usize,
     max_piv: usize,
     chunk: usize,
@@ -77,6 +80,7 @@ impl G0Calc {
 
         G0Calc {
             gc, g, z, candidates,
+            try_fast_ng: config.try_fast_ng,
             max_size: config.max_size,
             max_piv: config.max_piv,
             chunk: config.chunk,
@@ -220,7 +224,7 @@ impl G0Calc {
         debug!("linear system size: {:?}", (n_z, n_w));
 
         // try NG fast-path for large system
-        if n_w >= self.chunk || n_z >= self.chunk {
+        if self.try_fast_ng && (n_w >= self.chunk || n_z >= self.chunk) {
             let n_raw_w = self.gc.count_raw_gens_in(k + 1, &pts_w);
             let n_raw_z = self.gc.count_raw_gens_in(k, &pts_z);
             let smaller = n_raw_w < n_w || n_raw_z < n_z;

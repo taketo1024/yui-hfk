@@ -30,6 +30,10 @@ pub struct Args {
     #[arg(long)]
     pub tau: Option<isize>,
 
+    /// Try the U-specialization NG fast-path on large systems
+    #[arg(long)]
+    pub try_fast_ng: bool,
+
     /// Resign on linear systems whose dimension exceeds this size
     #[arg(long)]
     pub max_size: Option<usize>,
@@ -59,6 +63,7 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
     let config = G0CalcConfig {
         filter_regions: !args.no_filter_regions,
         filter_gens:    !args.no_filter_gens,
+        try_fast_ng:    args.try_fast_ng,
         max_size:       args.max_size.unwrap_or(defaults.max_size),
         max_piv:        args.max_piv.unwrap_or(defaults.max_piv),
         chunk:          args.chunk.unwrap_or(defaults.chunk),
