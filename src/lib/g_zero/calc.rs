@@ -1,14 +1,14 @@
 use log::*;
-use num_traits::Zero;
-use yui_core::lc::Lc;
+use num_traits::{One, Zero};
+use yui_core::lc::{Gen, Lc};
 use yui_core::num::FF2;
 use yui_core::poly::MultiVar;
-use yui_homology::{DisplayTable, SummandTrait};
+use yui_homology::{DisplayTable, Summand};
 use yui_matrix::MatTrait;
 use yui_matrix::sparse::{SpMat, SpVec};
 use yui_matrix::sparse::pluq::{solve_pluq, solve_pluq_incr};
 
-use crate::{GridComplex, GridDiagram, HFK};
+use crate::{GCGen, GridComplex, GridDiagram, HFK};
 use crate::grid_complex::{GCFiltered, GCInfGen};
 use crate::grid_complex::chain::GCInfChainExt;
 use super::{Candidates, Region};
@@ -64,7 +64,6 @@ impl G0Calc {
         if z.is_zero() { 
             info!("  homological generator contained in all candidate regions!");
         }
-
 
         G0Calc { gc, z, candidates, max_piv: config.max_piv, chunk: config.chunk }
     }
@@ -152,31 +151,43 @@ impl G0Calc {
     }
 
     /// Tests whether `z` has a homologous cycle contained in the region `r`.
-    ///
-    /// Finds `w` of maslov degree `k+1` (where `k = maslov_degree(z)`) with
-    /// generators outside `r` such that `d(w) ≡ z (mod r)`.
-    /// Returns `z - d(w)`, which is homologous to `z` and lies inside `r`.
     fn find_homologous(
         &self,
         z: &Lc<GCInfGen, FF2>,
         r: &Region,
     ) -> Option<Lc<GCInfGen, FF2>> {
         assert!(z.is_maslov_homogeneous());
+
         let k = z.maslov_degree();
-
-        debug!("inflate generators ...");
-        let gen_w = self.gc.complementary_gens(k + 1, r); // space where w lives
-        debug!("  in-gens: {}", gen_w.rank());
-
-        let gen_z = self.gc.complementary_gens(k, r);     // space where z lives mod r
-        debug!("  out-gens: {}", gen_z.rank());
-
         let z0 = r.cutoff(z);
-        let y  = gen_z.vectorize(&z0);
+
+        let pts_w = self.gc.complementary_points(k + 1, r);
+        let pts_z = self.gc.complementary_points(k, r);
+
+        let n_w = self.gc.count_inf_gens_in(k + 1, &pts_w);
+        let n_z = self.gc.count_inf_gens_in(k, &pts_z);
+
+        debug!("linear system size: {:?}", (n_z, n_w));
+
+        // try NG fast-path for large system
+        if n_w >= self.chunk || n_z >= self.chunk {
+            let n_raw_w = self.gc.count_raw_gens_in(k + 1, &pts_w);
+            let n_raw_z = self.gc.count_raw_gens_in(k, &pts_z);
+            if (n_raw_w < n_w || n_raw_z < n_z) && !self.pass_specialized(k, &pts_w, &pts_z, &z0, r) {
+                return None;
+            }
+        }
+
+        debug!("create inf gens ...");
+        let gen_w = self.gc.inf_gens_in(k + 1, &pts_w); // space where w lives
+        let gen_z = self.gc.inf_gens_in(k, &pts_z);     // space where z lives mod r
 
         debug!("create matrix ...");
-        let a  = gen_w.make_matrix(&gen_z, |x| r.cutoff(&self.gc.differentiate(x)));
-        debug!("  a: {} x {}", a.nrows(), a.ncols());
+        let (a, y) = create_ay(
+            &gen_w, &gen_z, &z0,
+            |x| r.cutoff(&self.gc.differentiate(x)),
+        );
+        debug!("  a: {:?} (nnz: {})", a.shape(), a.nnz());
 
         let x_sol = self.find_sol(&a, &y)?;
         let w = gen_w.devectorize(&x_sol);
@@ -192,7 +203,7 @@ impl G0Calc {
 
         let y = y.to_dense();
 
-        let x = if a.nrows() < self.chunk { 
+        let x = if a.nrows() < self.chunk {
             solve_pluq(a, &y)
         } else {
             solve_pluq_incr(&a, &y, self.max_piv, self.chunk)
@@ -200,6 +211,71 @@ impl G0Calc {
 
         Some(SpVec::from(x))
     }
+
+    fn pass_specialized(
+        &self,
+        k: isize,
+        pts_w: &[(isize, isize)],
+        pts_z: &[(isize, isize)],
+        z0: &Lc<GCInfGen, FF2>,
+        r: &Region,
+    ) -> bool {
+        debug!("try NG fast-path ...");
+        let n = self.gc.grid_number() as usize;
+        let raw_gen_w = self.gc.raw_gens_in(k + 1, pts_w);
+        let raw_gen_z = self.gc.raw_gens_in(k, pts_z);
+
+        if !self.has_sol_specialed(&raw_gen_w, &raw_gen_z, z0, r, &vec![FF2::zero(); n]) {
+            debug!("  NG via U = 0");
+            return false;
+        }
+
+        if !self.has_sol_specialed(&raw_gen_w, &raw_gen_z, z0, r, &vec![FF2::one(); n]) {
+            debug!("  NG via U = 1");
+            return false;
+        }
+
+        true
+    }
+
+    fn has_sol_specialed(
+        &self,
+        raw_gen_w: &Summand<GCGen, FF2>,
+        raw_gen_z: &Summand<GCGen, FF2>,
+        z0: &Lc<GCInfGen, FF2>,
+        r: &Region,
+        c: &[FF2],
+    ) -> bool {
+        let lift = |x: &GCGen| Lc::from(GCInfGen::from(x.clone()));
+        let proj = move |x: &GCInfGen| if x.u.eval(c).is_zero() { 
+            Lc::zero() 
+        } else { 
+            Lc::from(x.gen.clone()) 
+        };
+
+        debug!("create specialized matrix ...");
+        let (a_c, y_c) = create_ay(
+            raw_gen_w, raw_gen_z, &z0.apply(&proj),
+            |x| r.cutoff(&self.gc.differentiate(&x.apply(&lift))).apply(&proj),
+        );
+
+        debug!("  specialized: {:?} (nnz = {})", a_c.shape(), a_c.nnz());
+        self.find_sol(&a_c, &y_c).is_some()
+    }
+}
+
+fn create_ay<X>(
+    gen_w: &Summand<X, FF2>,
+    gen_z: &Summand<X, FF2>,
+    y_target: &Lc<X, FF2>,
+    f: impl Fn(&Lc<X, FF2>) -> Lc<X, FF2>,
+) -> (SpMat<FF2>, SpVec<FF2>)
+where
+    X: Gen + Into<GCInfGen>,
+{
+    let a = gen_w.make_matrix(gen_z, |x| f(x));
+    let y = gen_z.vectorize(y_target);
+    (a, y)
 }
 
 #[cfg(test)]
