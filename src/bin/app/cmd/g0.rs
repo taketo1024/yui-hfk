@@ -22,6 +22,10 @@ pub struct Args {
     #[arg(long)]
     pub g4: Option<usize>,
 
+    /// Filter candidates using a known value of the tau invariant
+    #[arg(long)]
+    pub tau: Option<isize>,
+
     /// Resign on linear systems whose dimension exceeds this size
     #[arg(long)]
     pub max_size: Option<usize>,
@@ -58,6 +62,9 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
     let mut calc = G0Calc::new(gd, config);
     if let Some(g4) = args.g4 {
         calc.filter_by_g4(g4);
+    }
+    if let Some(tau) = args.tau {
+        calc.filter_by_tau(tau);
     }
     calc.run();
 

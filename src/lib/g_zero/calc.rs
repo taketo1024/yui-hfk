@@ -11,7 +11,7 @@ use yui_matrix::sparse::pluq::{solve_pluq, solve_pluq_incr};
 use crate::{GCGen, GridComplex, GridDiagram, HFK};
 use crate::grid_complex::{GCFiltered, GCInfGen};
 use crate::grid_complex::chain::GCInfChainExt;
-use super::{Candidates, Region};
+use super::{Candidates, Corner, Region};
 
 pub struct G0CalcConfig {
     pub filter_regions: bool,
@@ -41,6 +41,7 @@ pub struct Resigned;
 
 pub struct G0Calc {
     gc: GridComplex<GCFiltered>,
+    g: usize,
     z: Lc<GCInfGen, FF2>,
     candidates: Candidates,
     max_size: usize,
@@ -74,11 +75,11 @@ impl G0Calc {
             info!("  homological generator contained in all candidate regions!");
         }
 
-        G0Calc { 
-            gc, z, candidates, 
+        G0Calc {
+            gc, g, z, candidates,
             max_size: config.max_size,
-            max_piv: config.max_piv, 
-            chunk: config.chunk, 
+            max_piv: config.max_piv,
+            chunk: config.chunk,
         }
     }
 
@@ -125,6 +126,18 @@ impl G0Calc {
     pub fn filter_by_g4(&mut self, g4: usize) {
         self.candidates.filter_by_g4(g4);
         info!("g4 = {g4}, regions: {}", self.candidates.regions.len());
+    }
+
+    /// Uses a known value of the tau invariant to accept the maximal
+    /// characterizing region `R[(-1, g), (0, τ)]` and reject the next-smaller
+    /// region `R[(-1, g), (0, τ - 1)]` (and their transposes).
+    pub fn filter_by_tau(&mut self, tau: isize) {
+        let g = self.g as isize;
+        let accept = Region::new([Corner::new(-1, g), Corner::new(0, tau)]);
+        let reject = Region::new([Corner::new(-1, g), Corner::new(0, tau - 1)]);
+        self.candidates.accept(&accept);
+        self.candidates.reject(&reject);
+        info!("tau = {tau}, regions: {}", self.candidates.regions.len());
     }
 
     pub fn accepted(&self) -> &[Region] {
