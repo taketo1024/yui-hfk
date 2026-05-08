@@ -22,6 +22,10 @@ pub struct Args {
     #[arg(long)]
     pub g4: Option<usize>,
 
+    /// Resign on linear systems whose dimension exceeds this size
+    #[arg(long)]
+    pub max_size: Option<usize>,
+
     /// Cap on the sparse pre-PLUQ pivot count in the linear solver
     #[arg(long)]
     pub max_piv: Option<usize>,
@@ -47,6 +51,7 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
     let config = G0CalcConfig {
         filter_regions: !args.no_filter_regions,
         filter_gens:    !args.no_filter_gens,
+        max_size:       args.max_size.unwrap_or(defaults.max_size),
         max_piv:        args.max_piv.unwrap_or(defaults.max_piv),
         chunk:          args.chunk.unwrap_or(defaults.chunk),
     };
@@ -56,10 +61,19 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
     }
     calc.run();
 
-    let result = calc.accepted().iter()
-        .map(|r| r.to_string())
-        .collect::<Vec<_>>()
-        .join("\n");
+    let format_lines = |rs: &[yui_hfk::g_zero::Region]| -> String {
+        rs.iter().map(|r| format!("  {r}")).collect::<Vec<_>>().join("\n")
+    };
+
+    let result = if calc.resigned().is_empty() {
+        calc.accepted().iter().map(|r| r.to_string()).collect::<Vec<_>>().join("\n")
+    } else {
+        format!(
+            "accepted:\n{}\n\nresigned:\n{}",
+            format_lines(calc.accepted()),
+            format_lines(calc.resigned()),
+        )
+    };
 
     Ok(result)
 }

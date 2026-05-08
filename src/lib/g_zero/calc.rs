@@ -16,6 +16,7 @@ use super::{Candidates, Region};
 pub struct G0CalcConfig {
     pub filter_regions: bool,
     pub filter_gens: bool,
+    pub max_size: usize,
     pub max_piv: usize,
     pub chunk: usize,
 }
@@ -25,16 +26,24 @@ impl Default for G0CalcConfig {
         Self {
             filter_regions: true,
             filter_gens: true,
+            max_size: 1_000_000,
             max_piv: 500_000,
             chunk: 100_000,
         }
     }
 }
 
+/// Returned by `find_homologous` when the system exceeds `max_size` and
+/// neither the trivial cycle-membership check nor the U-specialization
+/// fast-path concluded.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Resigned;
+
 pub struct G0Calc {
     gc: GridComplex<GCFiltered>,
     z: Lc<GCInfGen, FF2>,
     candidates: Candidates,
+    max_size: usize,
     max_piv: usize,
     chunk: usize,
 }
@@ -65,7 +74,12 @@ impl G0Calc {
             info!("  homological generator contained in all candidate regions!");
         }
 
-        G0Calc { gc, z, candidates, max_piv: config.max_piv, chunk: config.chunk }
+        G0Calc { 
+            gc, z, candidates, 
+            max_size: config.max_size,
+            max_piv: config.max_piv, 
+            chunk: config.chunk, 
+        }
     }
 
     fn make_candidates(hfk: &HFK, g: usize, filter_regions: bool) -> Candidates { 
@@ -117,6 +131,10 @@ impl G0Calc {
         &self.candidates.accepted
     }
 
+    pub fn resigned(&self) -> &[Region] {
+        &self.candidates.resigned
+    }
+
     // Tests whether `r` is realizable: tries to find a cycle homologous to z
     // inside r. Shifts both r and z by s = right_end(r) so that the shifted
     // region has right_end = 0, which is required by find_homologous.
@@ -131,14 +149,19 @@ impl G0Calc {
         let s = r.right_end().max(0);
         let r_shifted = r.shift(-s, -s);
         let z_shifted = self.shift_z(s as usize);
+
         match self.find_homologous(&z_shifted, &r_shifted) {
-            Some(_) => { 
-                info!("OK: {r}"); 
-                self.candidates.accept(&r); 
-            },
-            None => { 
-                info!("NG: {r}"); 
-                self.candidates.reject(&r); 
+            Ok(Some(_)) => {
+                info!("OK: {r}");
+                self.candidates.accept(&r);
+            }
+            Ok(None) => {
+                info!("NG: {r}");
+                self.candidates.reject(&r);
+            }
+            Err(Resigned) => {
+                info!("RESIGN: {r}");
+                self.candidates.resign(&r);
             }
         }
     }
@@ -151,19 +174,29 @@ impl G0Calc {
     }
 
     /// Tests whether `z` has a homologous cycle contained in the region `r`.
+    ///
+    /// Returns:
+    /// - `Ok(Some(z'))` if a homologous cycle was found.
+    /// - `Ok(None)` if the system is unsolvable (definitive NG).
+    /// - `Err(Resigned)` if the system exceeds `max_size` and no fast-path
+    ///   could decide it.
     fn find_homologous(
         &self,
         z: &Lc<GCInfGen, FF2>,
         r: &Region,
-    ) -> Option<Lc<GCInfGen, FF2>> {
+    ) -> Result<Option<Lc<GCInfGen, FF2>>, Resigned> {
         assert!(z.is_maslov_homogeneous());
 
         let k = z.maslov_degree();
         let z0 = r.cutoff(z);
 
+        if z0.is_zero() { 
+            debug!("z contained in {r}.");
+            return Ok(Some(Lc::zero()))
+        }
+
         let pts_w = self.gc.complementary_points(k + 1, r);
         let pts_z = self.gc.complementary_points(k, r);
-
         let n_w = self.gc.count_inf_gens_in(k + 1, &pts_w);
         let n_z = self.gc.count_inf_gens_in(k, &pts_z);
 
@@ -173,9 +206,17 @@ impl G0Calc {
         if n_w >= self.chunk || n_z >= self.chunk {
             let n_raw_w = self.gc.count_raw_gens_in(k + 1, &pts_w);
             let n_raw_z = self.gc.count_raw_gens_in(k, &pts_z);
-            if (n_raw_w < n_w || n_raw_z < n_z) && !self.pass_specialized(k, &pts_w, &pts_z, &z0, r) {
-                return None;
+            let smaller = n_raw_w < n_w || n_raw_z < n_z;
+            let tractable = n_raw_w < self.max_size && n_raw_z < self.max_size;
+            if smaller && tractable && !self.pass_specialized(k, &pts_w, &pts_z, &z0, r) {
+                return Ok(None);
             }
+        }
+
+        // Resign if the inflated system is too large for the full solve.
+        if n_w > self.max_size || n_z > self.max_size {
+            debug!("resigning: size {} > max_size {}", n_w.max(n_z), self.max_size);
+            return Err(Resigned);
         }
 
         debug!("create inf gens ...");
@@ -189,13 +230,15 @@ impl G0Calc {
         );
         debug!("  a: {:?} (nnz: {})", a.shape(), a.nnz());
 
-        let x_sol = self.find_sol(&a, &y)?;
+        let Some(x_sol) = self.find_sol(&a, &y) else {
+            return Ok(None);
+        };
         let w = gen_w.devectorize(&x_sol);
 
         // z - d(w) is homologous to z and lies inside r.
         let mut z1 = z.clone();
         z1 -= &self.gc.differentiate(&w);
-        Some(z1)
+        Ok(Some(z1))
     }
 
     fn find_sol(&self, a: &SpMat<FF2>, y: &SpVec<FF2>) -> Option<SpVec<FF2>> {
@@ -247,7 +290,7 @@ impl G0Calc {
         c: &[FF2],
     ) -> bool {
         let lift = |x: &GCGen| Lc::from(GCInfGen::from(x.clone()));
-        let proj = move |x: &GCInfGen| if x.u.eval(c).is_zero() { 
+        let proj = move |x: &GCInfGen| if x.u.eval::<FF2>(c).is_zero() { 
             Lc::zero() 
         } else { 
             Lc::from(x.gen.clone()) 
@@ -300,7 +343,7 @@ mod tests {
         assert!(!z.is_zero());
 
         let r = Region::simple(0, 0);
-        let z1 = calc.find_homologous(&z, &r).expect("expected Some");
+        let z1 = calc.find_homologous(&z, &r).unwrap().expect("expected Some");
 
         assert!(!z1.is_zero());
         assert!(cx.differentiate(&z1).is_zero());
@@ -315,13 +358,11 @@ mod tests {
         let calc = G0Calc::new(gd, cfg);
         let cx = calc.complex();
         let z = cx.hom_gen();
-        
+
         assert!(!z.is_zero());
 
         let r = Region::new([Corner::new(-1, 0), Corner::new(0, -1)]);
-        let z1 = calc.find_homologous(&z, &r);
-
-        assert!(z1.is_none());
+        assert_eq!(calc.find_homologous(&z, &r), Ok(None));
     }
 
     #[test]
@@ -336,7 +377,7 @@ mod tests {
         assert!(!z.is_zero());
 
         let r = Region::simple(0, 1);
-        let z1 = calc.find_homologous(&z, &r).expect("expected Some for trefoil R(0,1)");
+        let z1 = calc.find_homologous(&z, &r).unwrap().expect("expected Some for trefoil R(0,1)");
 
         assert!(!z1.is_zero());
         assert!(cx.differentiate(&z1).is_zero(), "z1 must be a cycle");
