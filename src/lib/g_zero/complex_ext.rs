@@ -1,15 +1,12 @@
+use num_integer::binomial;
 use yui_core::num::FF2;
 use yui_homology::Summand;
 
-use crate::grid_complex::{GCFiltered, GCInfGen, GridComplex};
+use crate::grid_complex::{GCFiltered, GCGen, GCInfGen, GridComplex};
 use super::Region;
 
 impl GridComplex<GCFiltered> {
     // Returns the (alg_deg, alex_deg) coordinates outside r that can host inf_gens at maslov_deg k.
-    //
-    // For each inflated alex_deg j and alg_deg i ≤ 0, keeps (i, j) only when:
-    //   - (i, j) ∉ r, and
-    //   - a raw gen exists at the corresponding raw bidegree (k − 2i, j − i).
     pub(crate) fn complementary_points(&self, k: isize, r: &Region) -> Vec<(isize, isize)> {
         let a_range = self.gens.alex_deg_range();
         let j_max = *a_range.end();
@@ -23,14 +20,37 @@ impl GridComplex<GCFiltered> {
         }).collect()
     }
 
-    // Collect all GCInfGens of maslov_deg = k whose (alg_deg, alex_deg) lies outside r.
-    //
-    // Uses complementary_points to enumerate only the relevant (alg, alex) coordinates,
-    // then calls inf_gens_e for the exact U-degree at each point — avoiding a full sweep
-    // of inf_gens over all e at every alex degree.
-    pub(crate) fn complementary_gens(&self, k: isize, r: &Region) -> Summand<GCInfGen, FF2> {
-        let gens = self.complementary_points(k, r).into_iter().flat_map(|(i, j)| {
+    // Count GCInfGens of maslov_deg = k at the given (alg, alex) points without allocating them. 
+    pub(crate) fn count_inf_gens_in(&self, k: isize, pts: &[(isize, isize)]) -> usize {
+        let n = self.grid_number() as usize;
+        pts.iter().map(|&(i, j)| {
+            let e = (-i) as usize;
+            let n_bases = self.gens.raw_gens(k - 2 * i, j - i).len();
+            let n_multi = binomial(n + e - 1, e);
+            n_bases * n_multi
+        }).sum()
+    }
+
+    // Collect all GCInfGens of maslov_deg = k at the given (alg, alex) points.
+    pub(crate) fn inf_gens_in(&self, k: isize, pts: &[(isize, isize)]) -> Summand<GCInfGen, FF2> {
+        let gens = pts.iter().flat_map(|&(i, j)| {
             self.inf_gens_e(k, j, (-i) as usize)
+        });
+        Summand::from_raw_gens(gens)
+    }
+
+    // Count base GCGens at the given points without allocating them.
+    pub(crate) fn count_raw_gens_in(&self, k: isize, pts: &[(isize, isize)]) -> usize {
+        pts.iter().map(|&(i, j)| {
+            self.gens.raw_gens(k - 2 * i, j - i).len()
+        }).sum()
+    }
+
+    // Collect all base GCGens whose (maslov, alex) corresponds to one of the given
+    // inflated (alg, alex) points at maslov_deg = k. 
+    pub(crate) fn raw_gens_in(&self, k: isize, pts: &[(isize, isize)]) -> Summand<GCGen, FF2> {
+        let gens = pts.iter().flat_map(|&(i, j)| {
+            self.gens.raw_gens(k - 2 * i, j - i).iter().cloned()
         });
         Summand::from_raw_gens(gens)
     }
@@ -66,21 +86,23 @@ mod tests {
         assert!(pts.is_empty());
     }
 
-    // ---- complementary_gens tests ----
+    // ---- inf_gens_in tests ----
 
     #[test]
-    fn test_complementary_gens_unknot() {
+    fn test_inf_gens_in_unknot() {
         let gd = GridDiagram::unknot();
         let cx = GridComplex::<GCFiltered>::new(gd);
 
         // The unknot has a single raw gen at (maslov=0, alex=0).
         // Its only inf_gen at (k=0, j=0) is the trivial one: alg=0, alex=0.
-        // R(0,0) contains (0,0), so complementary_gens(0, R(0,0)) = empty.
-        let gen0 = cx.complementary_gens(0, &Region::simple(0, 0));
+        // R(0,0) contains (0,0), so the points are empty.
+        let pts = cx.complementary_points(0, &Region::simple(0, 0));
+        let gen0 = cx.inf_gens_in(0, &pts);
         assert_eq!(gen0.dim(), 0);
 
-        // R(-1,-1) does not contain (0,0), so complementary_gens(0, R(-1,-1)) has 1 gen.
-        let gen1 = cx.complementary_gens(0, &Region::simple(-1, -1));
+        // R(-1,-1) does not contain (0,0), so we get 1 gen.
+        let pts = cx.complementary_points(0, &Region::simple(-1, -1));
+        let gen1 = cx.inf_gens_in(0, &pts);
         assert_eq!(gen1.dim(), 1);
     }
 
