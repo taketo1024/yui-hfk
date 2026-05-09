@@ -8,6 +8,10 @@ pub struct Candidates {
 }
 
 impl Candidates {
+    pub fn new() -> Self { 
+        Candidates { regions: vec![], accepted: vec![], resigned: vec![] }
+    }
+
     /// Generates all combinatorial candidates for genus g.
     ///
     /// A candidate is a closed region R such that R includes the minimal region
@@ -82,6 +86,10 @@ impl Candidates {
             }
         }
         self.regions = result;
+    }
+
+    pub fn add(&mut self, r: Region) { 
+        self.regions.push(r);
     }
 
     /// Marks `r` as realizable: moves `r` and `rᵀ` into `accepted`, removes any
