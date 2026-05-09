@@ -1,4 +1,6 @@
 use clap::{Parser, Subcommand};
+use crate::app::cmd::tau;
+
 use super::args::AppArgs;
 use super::cmd::{g0, gh, hfk};
 
@@ -16,6 +18,7 @@ pub enum Cmd {
     G0(g0::Args),
     Gh(gh::Args),
     Hfk(hfk::Args),
+    Tau(tau::Args),
 }
 
 impl CliArgs {
@@ -24,6 +27,7 @@ impl CliArgs {
             Cmd::G0(args)  => args,
             Cmd::Gh(args)  => args,
             Cmd::Hfk(args) => args,
+            Cmd::Tau(args) => args,
         }
     }
 
@@ -47,6 +51,7 @@ impl App {
             Cmd::G0(args)  => g0::dispatch(args),
             Cmd::Gh(args)  => gh::dispatch(args),
             Cmd::Hfk(args) => hfk::dispatch(args),
+            Cmd::Tau(args) => tau::dispatch(args),
         }
     }
 
