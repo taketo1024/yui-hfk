@@ -11,7 +11,7 @@ use yui_matrix::sparse::pluq::{solve_pluq, solve_pluq_incr};
 use crate::{GCGen, GridComplex, GridDiagram, HFK};
 use crate::grid_complex::{GCFiltered, GCInfGen};
 use crate::grid_complex::chain::GCInfChainExt;
-use super::{Candidates, Corner, Region};
+use super::{Candidates, Region};
 
 pub struct G0CalcConfig {
     pub filter_regions: bool,
@@ -53,7 +53,7 @@ pub struct G0Calc {
 }
 
 impl G0Calc {
-    pub fn new(gd: GridDiagram, config: G0CalcConfig) -> Self {
+    pub fn new(gd: GridDiagram, g4: Option<usize>, tau: Option<isize>, config: G0CalcConfig) -> Self {
         info!("compute HFK ...");
         let hfk = HFK::from(&gd);
         info!("HFK:\n{}", hfk.display_table());
@@ -61,7 +61,7 @@ impl G0Calc {
         let g = hfk.genus() as usize;
         info!("g = {g}");
 
-        let candidates = Self::make_candidates(&hfk, g, config.filter_regions);
+        let candidates = Self::make_candidates(&hfk, g4, tau, config.filter_regions);
         info!("candidate regions: {}", candidates.regions.len());
         for r in &candidates.regions {
             info!("  {r}");
@@ -87,12 +87,30 @@ impl G0Calc {
         }
     }
 
-    fn make_candidates(hfk: &HFK, g: usize, filter_regions: bool) -> Candidates { 
-        let mut candidates = Candidates::generate_from(g);
+    fn make_candidates(hfk: &HFK, g4: Option<usize>, tau: Option<isize>, filter_regions: bool) -> Candidates { 
+        let g = hfk.genus();
+        let mut candidates = Candidates::generate_from(g as usize);
+
+        debug!("initial candidate regions: {}", candidates.regions.len());
+
         if filter_regions { 
             candidates.deduplicate();
+            debug!("  deduplicated -> {}", candidates.regions.len());
+
             candidates.filter_by_hfk(&hfk);
+            debug!("  filtered by hfk -> {}", candidates.regions.len());
+
+            if let Some(g4) = g4 { 
+                candidates.filter_by_g4(g4);
+                debug!("  filtered by g4({g4}) -> {}", candidates.regions.len());
+            }
+
+            if let Some(tau) = tau { 
+                candidates.filter_by_tau(tau);
+                debug!("  filtered by tau({tau}) -> {}", candidates.regions.len());
+            }
         }
+
         candidates.sort();
         candidates
     }
@@ -135,25 +153,8 @@ impl G0Calc {
     pub fn run(&mut self) {
         while !self.candidates.regions.is_empty() {
             let r = self.candidates.regions.remove(0);
-            self.process(r);
+            self.process(&r);
         }
-    }
-
-    pub fn filter_by_g4(&mut self, g4: usize) {
-        self.candidates.filter_by_g4(g4);
-        info!("g4 = {g4}, regions: {}", self.candidates.regions.len());
-    }
-
-    /// Uses a known value of the tau invariant to accept the maximal
-    /// characterizing region `R[(-1, g), (0, τ)]` and reject the next-smaller
-    /// region `R[(-1, g), (0, τ - 1)]` (and their transposes).
-    pub fn filter_by_tau(&mut self, tau: isize) {
-        let g = self.g as isize;
-        let accept = Region::new([Corner::new(-1, g), Corner::new(0, tau)]);
-        let reject = Region::new([Corner::new(-1, g), Corner::new(0, tau - 1)]);
-        self.candidates.accept(&accept);
-        self.candidates.reject(&reject);
-        info!("tau = {tau}, regions: {}", self.candidates.regions.len());
     }
 
     pub fn accepted(&self) -> &[Region] {
@@ -167,7 +168,7 @@ impl G0Calc {
     // Tests whether `r` is realizable: tries to find a cycle homologous to z
     // inside r. Shifts both r and z by s = right_end(r) so that the shifted
     // region has right_end = 0, which is required by find_homologous.
-    fn process(&mut self, r: Region) {
+    fn process(&mut self, r: &Region) {
         info!("try: {r} (remain: {})", self.candidates.regions.len());
 
         if r.contains_chain(&self.z) {
@@ -368,7 +369,7 @@ mod tests {
         // with w = 0, and the function returns z unchanged.
         let gd = GridDiagram::unknot();
         let cfg = G0CalcConfig { filter_regions: false, filter_gens: false, ..Default::default() };
-        let calc = G0Calc::new(gd, cfg);
+        let calc = G0Calc::new(gd, None, None, cfg);
 
         let z = &calc.z;
         assert!(!z.is_zero());
@@ -385,7 +386,7 @@ mod tests {
         // R[(-1,0), (0,-1)] lies strictly below the hom_gen at (0,0).
         let gd = GridDiagram::unknot();
         let cfg = G0CalcConfig { filter_regions: false, filter_gens: false, ..Default::default() };
-        let calc = G0Calc::new(gd, cfg);
+        let calc = G0Calc::new(gd, None, None, cfg);
         let z = &calc.z;
 
         assert!(!z.is_zero());
@@ -400,7 +401,7 @@ mod tests {
         // find_homologous should return Some(z1) where z1 is a cycle inside R(0,1).
         let gd = GridDiagram::trefoil();
         let cfg = G0CalcConfig { filter_regions: false, filter_gens: false, ..Default::default() };
-        let calc = G0Calc::new(gd, cfg);
+        let calc = G0Calc::new(gd, None, None, cfg);
         let z = &calc.z;
         assert!(!z.is_zero());
 
@@ -413,7 +414,7 @@ mod tests {
 
     fn accepted(gd: GridDiagram) -> Vec<Region> {
         let cfg = G0CalcConfig { filter_regions: false, filter_gens: false, ..Default::default() };
-        let mut calc = G0Calc::new(gd, cfg);
+        let mut calc = G0Calc::new(gd, None, None, cfg);
         calc.run();
 
         let mut rs = calc.accepted().to_vec();

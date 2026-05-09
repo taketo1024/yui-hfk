@@ -151,6 +151,13 @@ impl Candidates {
         });
     }
 
+    pub fn filter_by_tau(&mut self, tau: isize) {
+        let accept = Region::new([Corner::new(-1, isize::MAX), Corner::new(0, tau)]);
+        let reject = Region::new([Corner::new(-1, isize::MAX), Corner::new(0, tau - 1)]);
+        self.accept(&accept);
+        self.reject(&reject);
+    }
+
     /// Filters candidates in place by the HFK structure via Proposition 5.3
     /// (arXiv:2002.09210).
     pub fn filter_by_hfk(&mut self, hfk: &HFK) {

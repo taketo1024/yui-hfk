@@ -68,7 +68,9 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
         max_piv:        args.max_piv.unwrap_or(defaults.max_piv),
         chunk:          args.chunk.unwrap_or(defaults.chunk),
     };
-    let mut calc = G0Calc::new(gd, config);
+
+    let mut calc = G0Calc::new(gd, args.g4, args.tau, config);
+
     if let Some(g) = args.g {
         if g != calc.genus() {
             return Err(format!(
@@ -77,12 +79,7 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
             ).into());
         }
     }
-    if let Some(g4) = args.g4 {
-        calc.filter_by_g4(g4);
-    }
-    if let Some(tau) = args.tau {
-        calc.filter_by_tau(tau);
-    }
+
     calc.run();
 
     let format_lines = |rs: &[yui_hfk::g_zero::Region]| -> String {
