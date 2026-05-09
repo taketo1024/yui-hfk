@@ -5,7 +5,7 @@ use itertools::Itertools;
 use num_traits::{One, Zero};
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
-use yui_homology::{ChainComplex, ChainComplex2, Grid, Homology, Homology2, Summand, SummandTrait, isize2, range_of};
+use yui_homology::{ChainComplex, ChainComplex2, Grid, Homology, Homology2, Summand, isize2, range_of};
 use yui_core::poly::MultiVar;
 use crate::grid_complex::r#gen::GCInfGen;
 use crate::grid_diagram::{GridDiagram, GridRect};
@@ -183,21 +183,6 @@ impl GridComplex<GCTilde> {
     pub fn into_homology(self) -> Homology2<GCGen, FF2> {
         self.into_complex().reduced().homology()
     }
-
-    pub fn genus(gd: &GridDiagram) -> usize { 
-        let cx = GridComplex::<GCTilde>::new_filtered(gd.clone(), |x| x.alex_deg > 0);
-        let m_range = cx.maslov_deg_range();
-        let a_range = cx.alex_deg_range();
-
-        let h = cx.into_homology();
-        a_range.rev()
-            .find_map(|j| {
-                m_range.clone()
-                    .any(|i| h[(i, j)].rank() > 0)
-                    .then_some(j as usize)
-            })
-            .unwrap_or(0)
-    }
 }
 
 impl<V: GCInfType> GridComplex<V> {
@@ -367,27 +352,6 @@ mod tests {
         assert_eq!(h[(-4, -3)].rank(), 0);
         assert_eq!(h[(-5, -4)].rank(), 0);
         assert_eq!(h[(-6, -5)].rank(), 0);
-    }
-
-    #[test]
-    fn test_genus_unknot() {
-        let gd = GridDiagram::unknot();
-        let g = GridComplex::<GCTilde>::genus(&gd);
-        assert_eq!(g, 0);
-    }
-
-    #[test]
-    fn test_genus_trefoil() {
-        let gd = GridDiagram::trefoil();
-        let g = GridComplex::<GCTilde>::genus(&gd);
-        assert_eq!(g, 1);
-    }
-
-    #[test]
-    fn test_genus_5_1() {
-        let gd = GridDiagram::from_sequences(&[5,4,3,2,1,0,6], &[0,6,5,4,3,2,1]);
-        let g = GridComplex::<GCTilde>::genus(&gd);
-        assert_eq!(g, 2);
     }
 
     #[test]
