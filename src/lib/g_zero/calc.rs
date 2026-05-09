@@ -168,12 +168,14 @@ impl G0Calc {
     // inside r. Shifts both r and z by s = right_end(r) so that the shifted
     // region has right_end = 0, which is required by find_homologous.
     fn process(&mut self, r: Region) {
+        info!("try: {r} (remain: {})", self.candidates.regions.len());
+
         if r.contains_chain(&self.z) {
+            debug!("  z contained in {r}.");
+            info!("OK: {r}");
             self.candidates.accept(&r);
             return
         }
-
-        info!("try: {r} (remain: {})", self.candidates.regions.len());
 
         let s = r.right_end().max(0);
         let r_shifted = r.shift(-s, -s);
@@ -220,7 +222,6 @@ impl G0Calc {
         let z0 = r.cutoff(z);
 
         if z0.is_zero() { 
-            debug!("z contained in {r}.");
             return Ok(Some(Lc::zero()))
         }
 
@@ -284,6 +285,7 @@ impl G0Calc {
 
         debug!("validate solution..");
         assert_eq!(&(a * &x), y);
+        debug!("  ok.");
 
         Some(x)
     }
@@ -297,6 +299,7 @@ impl G0Calc {
         r: &Region,
     ) -> bool {
         debug!("try NG fast-path ...");
+
         let n = self.gc.grid_number() as usize;
         let raw_gen_w = self.gc.raw_gens_in(k + 1, pts_w);
         let raw_gen_z = self.gc.raw_gens_in(k, pts_z);
@@ -311,6 +314,7 @@ impl G0Calc {
             return false;
         }
 
+        debug!("passed NG fast-path.");
         true
     }
 
