@@ -304,11 +304,6 @@ impl G0Calc {
         let raw_gen_w = self.gc.raw_gens_in(k + 1, pts_w);
         let raw_gen_z = self.gc.raw_gens_in(k, pts_z);
 
-        if !self.has_sol_specialed(&raw_gen_w, &raw_gen_z, z0, r, &vec![FF2::zero(); n]) {
-            debug!("  NG via U = 0");
-            return false;
-        }
-
         if !self.has_sol_specialed(&raw_gen_w, &raw_gen_z, z0, r, &vec![FF2::one(); n]) {
             debug!("  NG via U = 1");
             return false;
