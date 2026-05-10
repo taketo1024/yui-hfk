@@ -47,16 +47,33 @@ impl App {
 
     pub fn run(&self) -> Result<String, Box<dyn std::error::Error>> {
         self.init_logger();
-        match &self.args.command {
+
+        let start = std::time::Instant::now();
+
+        let res = match &self.args.command {
             Cmd::G0(args)  => g0::dispatch(args),
             Cmd::Gh(args)  => gh::dispatch(args),
             Cmd::Hfk(args) => hfk::dispatch(args),
             Cmd::Tau(args) => tau::dispatch(args),
-        }
+        };
+
+        log::info!("run time: {}", format_duration(start.elapsed()));
+
+        res
     }
 
     fn init_logger(&self) {
         let level = self.args.log_level();
         yui_core::util::log::init_simple_logger(level).unwrap();
+    }
+}
+
+fn format_duration(d: std::time::Duration) -> String {
+    let total = d.as_secs();
+    let (h, m, s) = (total / 3600, (total % 3600) / 60, total % 60);
+    match (h, m) {
+        (0, 0) => format!("{:.3}s", d.as_secs_f64()),
+        (0, _) => format!("{}m {}s", m, s),
+        _      => format!("{}h {}m {}s", h, m, s),
     }
 }
