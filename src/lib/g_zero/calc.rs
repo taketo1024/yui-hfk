@@ -310,14 +310,11 @@ impl G0Calc {
     fn find_sol(&self, a: &SpMat<FF2>, y: &SpVec<FF2>) -> Option<SpVec<FF2>> {
         debug!("solve linear system ...");
 
-        let y_dense = y.to_dense();
-
         let x = if a.nrows() < self.chunk {
-            solve_pluq(a, &y_dense)
+            solve_pluq(a, y)
         } else {
-            solve_pluq_incr(&a, &y_dense, self.max_piv, self.chunk)
+            solve_pluq_incr(a, y, self.max_piv, self.chunk)
         }?;
-        let x = SpVec::from(x);
 
         debug!("validate solution..");
         assert_eq!(&(a * &x), y);

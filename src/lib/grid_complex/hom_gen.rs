@@ -197,7 +197,7 @@ mod tests {
         assert!(cx.differentiate(&z).is_zero());
 
         let gh = cx.into_homology(0);
-        assert_eq!(gh[0].vectorize(&z).into_vec(), vec![FF2::one()]);
+        assert_eq!(gh[0].vectorize(&z).into_dense(), vec![FF2::one()]);
     }
 
     #[test]
@@ -210,7 +210,7 @@ mod tests {
         assert!(cx.differentiate(&z).is_zero());
 
         let gh = cx.into_homology(0);
-        assert_eq!(gh[0].vectorize(&z).into_vec(), vec![FF2::one()]);
+        assert_eq!(gh[0].vectorize(&z).into_dense(), vec![FF2::one()]);
     }
 
     #[test]
@@ -223,6 +223,6 @@ mod tests {
         assert!(cx.differentiate(&z).is_zero());
 
         let gh = cx.into_homology(0);
-        assert_eq!(gh[0].vectorize(&z).into_vec(), vec![FF2::one()]);
+        assert_eq!(gh[0].vectorize(&z).into_dense(), vec![FF2::one()]);
     }
 }
