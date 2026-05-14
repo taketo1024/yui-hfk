@@ -68,6 +68,8 @@ impl G0Calc {
 
         let g = hfk.genus() as usize;
         info!("g = {g}");
+        
+        Self::validate(&hfk, g, g4, tau);
 
         let candidates = Self::make_candidates(&hfk, g4, tau, config.filter_regions);
         info!("candidate regions: {}", candidates.regions.len());
@@ -87,6 +89,22 @@ impl G0Calc {
         }
 
         Self::new(gc, g, z, candidates, config)
+    }
+
+    fn validate(hfk: &HFK, g: usize, g4: Option<usize>, tau: Option<isize>) { 
+        // MEMO: replace with if-let chain
+        if let Some(g4) = g4 { if let Some(tau) = tau { 
+            let t_abs = tau.abs() as usize;
+            assert!(t_abs <= g4, "Invalid inequality: |tau| = {t_abs} > g4 = {g4}");
+        }}
+        
+        if let Some(g4) = g4 { 
+            assert!(g4 <= g, "Invalid inequality: g4 = {g4} > g = {g}");
+        }
+
+        if let Some(tau) = tau { 
+            assert!(hfk[(0, tau)] > 0, "tau = {tau} is incompatible with HFK.");
+        }
     }
 
     fn make_candidates(hfk: &HFK, g4: Option<usize>, tau: Option<isize>, filter_regions: bool) -> Candidates { 
