@@ -40,7 +40,7 @@ impl Default for G0CalcConfig {
 /// neither the trivial cycle-membership check nor the U-specialization
 /// fast-path concluded.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Resigned;
+pub enum G0CalcError { Resigned }
 
 pub struct G0Calc {
     gc: GridComplex<GCFiltered>,
@@ -68,7 +68,7 @@ impl G0Calc {
 
         let g = hfk.genus() as usize;
         info!("g = {g}");
-        
+
         Self::validate(&hfk, g, g4, tau);
 
         let candidates = Self::make_candidates(&hfk, g4, tau, config.filter_regions);
@@ -212,7 +212,7 @@ impl G0Calc {
                 info!("NG: {r}");
                 self.candidates.reject(&r);
             }
-            Err(Resigned) => {
+            Err(G0CalcError::Resigned) => {
                 info!("RESIGN: {r}");
                 self.candidates.resign(&r);
             }
@@ -237,7 +237,7 @@ impl G0Calc {
         &self,
         z: &Lc<GCInfGen, FF2>,
         r: &Region,
-    ) -> Result<Option<Lc<GCInfGen, FF2>>, Resigned> {
+    ) -> Result<Option<Lc<GCInfGen, FF2>>, G0CalcError> {
         assert!(z.is_maslov_homogeneous());
 
         let k = z.maslov_degree();
@@ -268,7 +268,7 @@ impl G0Calc {
         // Resign if the inflated system is too large for the full solve.
         if n_w > self.config.max_size || n_z > self.config.max_size {
             debug!("resigning: size {} > max_size {}", n_w.max(n_z), self.config.max_size);
-            return Err(Resigned);
+            return Err(G0CalcError::Resigned);
         }
 
         debug!("create inf gens ...");

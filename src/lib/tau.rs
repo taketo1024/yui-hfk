@@ -1,14 +1,14 @@
 use log::{debug, info};
 
 use crate::g_zero::{Candidates, Corner, Region};
-use crate::g_zero::calc::Resigned;
+use crate::g_zero::calc::G0CalcError;
 use crate::{G0Calc, G0CalcConfig, GridDiagram, genus};
 
-pub fn tau(gd: &GridDiagram) -> Result<isize, Resigned> { 
+pub fn tau(gd: &GridDiagram) -> Result<isize, G0CalcError> { 
     tau_with_config(gd, None, None, G0CalcConfig::default())
 }
 
-pub fn tau_with_config(gd: &GridDiagram, g: Option<usize>, g4: Option<usize>, config: G0CalcConfig) -> Result<isize, Resigned> { 
+pub fn tau_with_config(gd: &GridDiagram, g: Option<usize>, g4: Option<usize>, config: G0CalcConfig) -> Result<isize, G0CalcError> { 
     info!("compute tau ...");
 
     let g = g.unwrap_or_else(|| { 
@@ -17,23 +17,31 @@ pub fn tau_with_config(gd: &GridDiagram, g: Option<usize>, g4: Option<usize>, co
     });
     debug!("  g = {g}");
 
+    if let Some(g4) = g4 { 
+        assert!(g4 <= g, "Invalid inequality: g4 = {g4} > g = {g}");
+    }
+
     let t = compute_tau(gd, g, g4, config)?;
 
     if t >= 0 { 
         info!("computed tau = {}", t);
+        validate(g4, t);
         Ok(t) // minimal 
     } else if t == -1 { 
         info!("reached tau <= -1. switch to mirror.");
         let t = compute_tau(&gd.rotate90(), g, g4, config)?;
+
         assert!(t >= 1);
         info!("computed tau = {}", -t);
+
+        validate(g4, -t);
         Ok(-t)
     } else { 
         panic!("Unreachable.")
     }
 }
 
-fn compute_tau(gd: &GridDiagram, g: usize, g4: Option<usize>, config: G0CalcConfig) -> Result<isize, Resigned> { 
+fn compute_tau(gd: &GridDiagram, g: usize, g4: Option<usize>, config: G0CalcConfig) -> Result<isize, G0CalcError> { 
     let mut candidates = Candidates::new();
     let t = g4.unwrap_or(g) as isize;
 
@@ -55,14 +63,23 @@ fn compute_tau(gd: &GridDiagram, g: usize, g4: Option<usize>, config: G0CalcConf
     calc.run();
 
     if !calc.resigned().is_empty() { 
-        return Err(Resigned)
+        return Err(G0CalcError::Resigned)
     }
 
-    assert_eq!(calc.accepted().len(), 2);
+    if calc.accepted().len() == 2 { 
+        let r = calc.accepted().iter().find(|r| r.corners()[1].i == 0).unwrap();
+        let t = r.corners()[1].j;
+        Ok(t)
+    } else { 
+        panic!("Invalid state, possibly due to invalid input: g = {g}, g4 = {g4:?}");
+    }
+}
 
-    let r = calc.accepted().iter().find(|r| r.corners()[1].i == 0).unwrap();
-    let t = r.corners()[1].j;
-    Ok(t)
+fn validate(g4: Option<usize>, tau: isize) { 
+    if let Some(g4) = g4 {
+        let t_abs = tau.abs() as usize;
+        assert!(t_abs <= g4, "Invalid inequality: |tau| = {t_abs} > g4 = {g4}");
+    }
 }
 
 #[cfg(test)]

@@ -10,6 +10,18 @@ pub struct Args {
     #[arg(short, long)]
     pub mirror: bool,
 
+    /// Expected genus; aborts if it disagrees with the computed value
+    #[arg(short, long)]
+    pub g: Option<usize>,
+
+    /// Filter candidates using the 4-genus bound
+    #[arg(short='G', long)]
+    pub g4: Option<usize>,
+
+    /// Filter candidates using a known value of the tau invariant
+    #[arg(short, long)]
+    pub tau: Option<isize>,
+
     /// Skip HFK-based region filtering
     #[arg(long)]
     pub no_filter_regions: bool,
@@ -17,18 +29,6 @@ pub struct Args {
     /// Skip generator filtering
     #[arg(long)]
     pub no_filter_gens: bool,
-
-    /// Expected genus; aborts if it disagrees with the computed value
-    #[arg(long)]
-    pub g: Option<usize>,
-
-    /// Filter candidates using the 4-genus bound
-    #[arg(long)]
-    pub g4: Option<usize>,
-
-    /// Filter candidates using a known value of the tau invariant
-    #[arg(long)]
-    pub tau: Option<isize>,
 
     /// Try the U-specialization NG fast-path on large systems
     #[arg(long)]
@@ -56,6 +56,8 @@ impl AppArgs for Args {
 }
 
 pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
+    validate(args);
+
     let gd = load_diagram(&args.knot)?;
     let gd = if args.mirror { gd.rotate90() } else { gd };
 
@@ -72,12 +74,7 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
     let mut calc = G0Calc::from_gd(&gd, args.g4, args.tau, config);
 
     if let Some(g) = args.g {
-        if g != calc.genus() {
-            return Err(format!(
-                "expected genus g = {g}, but computed g = {}",
-                calc.genus()
-            ).into());
-        }
+        assert_eq!(g, calc.genus(), "expected genus g = {g}, but computed g = {}.", calc.genus());
     }
 
     calc.run();
@@ -97,4 +94,15 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
     };
 
     Ok(result)
+}
+
+fn validate(args: &Args) { 
+    if let Some(g) = args.g { if let Some(g4) = args.g4 { 
+        assert!(g4 <= g, "Invalid inequality: g4 = {g4} > g = {g}");
+    }}
+
+    if let Some(g4) = args.g4 { if let Some(tau) = args.tau { 
+        let t_abs = tau.abs() as usize;
+        assert!(t_abs <= g4, "Invalid inequality: |tau| = {t_abs} > g4 = {g4}");
+    }}
 }
