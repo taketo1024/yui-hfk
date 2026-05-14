@@ -14,6 +14,7 @@ use crate::grid_complex::{GCFiltered, GCInfGen};
 use crate::grid_complex::chain::GCInfChainExt;
 use super::{Candidates, Region};
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct G0CalcConfig {
     pub filter_regions: bool,
     pub filter_gens: bool,
@@ -47,16 +48,23 @@ pub struct G0Calc {
     g: usize,
     z: Lc<GCInfGen, FF2>,
     candidates: Candidates,
-    try_fast_ng: bool,
-    max_size: usize,
-    max_piv: usize,
-    chunk: usize,
+    config: G0CalcConfig
 }
 
 impl G0Calc {
-    pub fn new(gd: GridDiagram, g4: Option<usize>, tau: Option<isize>, config: G0CalcConfig) -> Self {
+    pub(crate) fn new(
+        gc: GridComplex<GCFiltered>,
+        g: usize,
+        z: Lc<GCInfGen, FF2>,
+        candidates: Candidates,
+        config: G0CalcConfig,
+    ) -> Self {
+        G0Calc { gc, g, z, candidates, config }
+    }
+
+    pub fn from_gd(gd: &GridDiagram, g4: Option<usize>, tau: Option<isize>, config: G0CalcConfig) -> Self {
         info!("compute HFK ...");
-        let hfk = HFK::from(&gd);
+        let hfk = HFK::from(gd);
         info!("HFK:\n{}", hfk.display_table());
 
         let g = hfk.genus() as usize;
@@ -79,13 +87,7 @@ impl G0Calc {
             info!("  homological generator contained in all candidate regions!");
         }
 
-        G0Calc {
-            gc, g, z, candidates,
-            try_fast_ng: config.try_fast_ng,
-            max_size: config.max_size,
-            max_piv: config.max_piv,
-            chunk: config.chunk,
-        }
+        Self::new(gc, g, z, candidates, config)
     }
 
     pub fn new_tau(gd: GridDiagram, g4: Option<usize>, config: G0CalcConfig) -> Self {
@@ -106,20 +108,14 @@ impl G0Calc {
         }
 
         info!("prepare generators ...");
-        let gc = Self::build_complex(gd, &candidates, config.filter_gens);
+        let gc = Self::build_complex(&gd, &candidates, config.filter_gens);
         info!("  #generators: {}", gc.gens.len());
 
         info!("compute homological generator");
         let z = gc.hom_gen();
         let g = g as usize;
 
-        G0Calc {
-            gc, g, z, candidates,
-            try_fast_ng: config.try_fast_ng,
-            max_size: config.max_size,
-            max_piv: config.max_piv,
-            chunk: config.chunk,
-        }
+        G0Calc { gc, g, z, candidates, config }
     }
 
     fn make_candidates(hfk: &HFK, g4: Option<usize>, tau: Option<isize>, filter_regions: bool) -> Candidates { 
@@ -150,7 +146,8 @@ impl G0Calc {
         candidates
     }
 
-    fn build_complex(gd: GridDiagram, candidates: &Candidates, filter_gens: bool) -> GridComplex<GCFiltered> {
+    pub(crate) fn build_complex(gd: &GridDiagram, candidates: &Candidates, filter_gens: bool) -> GridComplex<GCFiltered> {
+        let gd = gd.clone();
         if !filter_gens { return GridComplex::new(gd); }
 
         GridComplex::new_filtered(gd, |x| 
@@ -269,19 +266,19 @@ impl G0Calc {
         debug!("linear system size: {:?}", (n_z, n_w));
 
         // try NG fast-path for large system
-        if self.try_fast_ng && (n_w >= self.chunk || n_z >= self.chunk) {
+        if self.config.try_fast_ng && (n_w >= self.config.chunk || n_z >= self.config.chunk) {
             let n_raw_w = self.gc.count_raw_gens_in(k + 1, &pts_w);
             let n_raw_z = self.gc.count_raw_gens_in(k, &pts_z);
             let smaller = n_raw_w < n_w || n_raw_z < n_z;
-            let tractable = n_raw_w < self.max_size && n_raw_z < self.max_size;
+            let tractable = n_raw_w < self.config.max_size && n_raw_z < self.config.max_size;
             if smaller && tractable && !self.pass_specialized(k, &pts_w, &pts_z, &z0, r) {
                 return Ok(None);
             }
         }
 
         // Resign if the inflated system is too large for the full solve.
-        if n_w > self.max_size || n_z > self.max_size {
-            debug!("resigning: size {} > max_size {}", n_w.max(n_z), self.max_size);
+        if n_w > self.config.max_size || n_z > self.config.max_size {
+            debug!("resigning: size {} > max_size {}", n_w.max(n_z), self.config.max_size);
             return Err(Resigned);
         }
 
@@ -310,10 +307,10 @@ impl G0Calc {
     fn find_sol(&self, a: &SpMat<FF2>, y: &SpVec<FF2>) -> Option<SpVec<FF2>> {
         debug!("solve linear system ...");
 
-        let x = if a.nrows() < self.chunk {
+        let x = if a.nrows() < self.config.chunk {
             solve_pluq(a, y)
         } else {
-            solve_pluq_incr(a, y, self.max_piv, self.chunk)
+            solve_pluq_incr(a, y, self.config.max_piv, self.config.chunk)
         }?;
 
         debug!("validate solution..");
@@ -401,7 +398,7 @@ mod tests {
         // with w = 0, and the function returns z unchanged.
         let gd = GridDiagram::unknot();
         let cfg = G0CalcConfig { filter_regions: false, filter_gens: false, ..Default::default() };
-        let calc = G0Calc::new(gd, None, None, cfg);
+        let calc = G0Calc::from_gd(&gd, None, None, cfg);
 
         let z = &calc.z;
         assert!(!z.is_zero());
@@ -418,7 +415,7 @@ mod tests {
         // R[(-1,0), (0,-1)] lies strictly below the hom_gen at (0,0).
         let gd = GridDiagram::unknot();
         let cfg = G0CalcConfig { filter_regions: false, filter_gens: false, ..Default::default() };
-        let calc = G0Calc::new(gd, None, None, cfg);
+        let calc = G0Calc::from_gd(&gd, None, None, cfg);
         let z = &calc.z;
 
         assert!(!z.is_zero());
@@ -433,7 +430,7 @@ mod tests {
         // find_homologous should return Some(z1) where z1 is a cycle inside R(0,1).
         let gd = GridDiagram::trefoil();
         let cfg = G0CalcConfig { filter_regions: false, filter_gens: false, ..Default::default() };
-        let calc = G0Calc::new(gd, None, None, cfg);
+        let calc = G0Calc::from_gd(&gd, None, None, cfg);
         let z = &calc.z;
         assert!(!z.is_zero());
 
@@ -446,7 +443,7 @@ mod tests {
 
     fn accepted(gd: GridDiagram) -> Vec<Region> {
         let cfg = G0CalcConfig { filter_regions: false, filter_gens: false, ..Default::default() };
-        let mut calc = G0Calc::new(gd, None, None, cfg);
+        let mut calc = G0Calc::from_gd(&gd, None, None, cfg);
         calc.run();
 
         let mut rs = calc.accepted().to_vec();

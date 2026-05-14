@@ -69,7 +69,7 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
         chunk:          args.chunk.unwrap_or(defaults.chunk),
     };
 
-    let mut calc = G0Calc::new(gd, args.g4, args.tau, config);
+    let mut calc = G0Calc::from_gd(&gd, args.g4, args.tau, config);
 
     if let Some(g) = args.g {
         if g != calc.genus() {
