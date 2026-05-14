@@ -19,11 +19,17 @@ pub fn tau_with_config(gd: &GridDiagram, g: Option<usize>, g4: Option<usize>, co
 
     let t = compute_tau(gd, g, g4, config)?;
 
-    if t > 0 { 
+    if t >= 0 { 
+        info!("computed tau = {}", t);
         Ok(t) // minimal 
-    } else { 
+    } else if t == -1 { 
+        info!("reached tau <= -1. switch to mirror.");
         let t = compute_tau(&gd.rotate90(), g, g4, config)?;
+        assert!(t >= 1);
+        info!("computed tau = {}", -t);
         Ok(-t)
+    } else { 
+        panic!("Unreachable.")
     }
 }
 
@@ -31,8 +37,8 @@ fn compute_tau(gd: &GridDiagram, g: usize, g4: Option<usize>, config: G0CalcConf
     let mut candidates = Candidates::new();
     let t = g4.unwrap_or(g) as isize;
 
-    // MEMO: Only check regions r for i >= 0. 
-    for i in (0..=t).rev() { 
+    // MEMO: Only check regions r for i >= -1. 
+    for i in (-1..=t).rev() { 
         let r = Region::new([Corner::new(-1, isize::MAX), Corner::new(0, i)]);
         candidates.add(r);
     }
