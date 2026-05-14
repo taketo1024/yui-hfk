@@ -8,8 +8,7 @@ use yui_matrix::MatTrait;
 use yui_matrix::sparse::{SpMat, SpVec};
 use yui_matrix::sparse::pluq::{solve_pluq, solve_pluq_incr};
 
-use crate::g_zero::Corner;
-use crate::{GCGen, GridComplex, GridDiagram, HFK, genus};
+use crate::{GCGen, GridComplex, GridDiagram, HFK};
 use crate::grid_complex::{GCFiltered, GCInfGen};
 use crate::grid_complex::chain::GCInfChainExt;
 use super::{Candidates, Region};
@@ -88,34 +87,6 @@ impl G0Calc {
         }
 
         Self::new(gc, g, z, candidates, config)
-    }
-
-    pub fn new_tau(gd: GridDiagram, g4: Option<usize>, config: G0CalcConfig) -> Self {
-        info!("compute genus ...");
-        let g = genus(&gd);
-        info!("g = {g}");
-
-        let mut candidates = Candidates::new();
-        let t = g4.unwrap_or(g) as isize;
-        for i in -t..=t { 
-            let r = Region::new([Corner::new(-1, isize::MAX), Corner::new(0, i)]);
-            candidates.add(r);
-        }
-
-        info!("candidate regions: {}", candidates.regions.len());
-        for r in &candidates.regions {
-            info!("  {r}");
-        }
-
-        info!("prepare generators ...");
-        let gc = Self::build_complex(&gd, &candidates, config.filter_gens);
-        info!("  #generators: {}", gc.gens.len());
-
-        info!("compute homological generator");
-        let z = gc.hom_gen();
-        let g = g as usize;
-
-        G0Calc { gc, g, z, candidates, config }
     }
 
     fn make_candidates(hfk: &HFK, g4: Option<usize>, tau: Option<isize>, filter_regions: bool) -> Candidates { 

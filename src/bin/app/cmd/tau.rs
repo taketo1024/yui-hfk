@@ -1,4 +1,6 @@
-use yui_hfk::{G0Calc, G0CalcConfig};
+use log::error;
+use yui_hfk::tau::tau_with_config;
+use yui_hfk::G0CalcConfig;
 use crate::app::{AppArgs, utils::load_diagram};
 
 #[derive(Clone, Debug, clap::Args)]
@@ -65,34 +67,12 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
         chunk:          args.chunk.unwrap_or(defaults.chunk),
     };
 
-    let mut calc = G0Calc::new_tau(gd, args.g4, config);
+    let t = tau_with_config(&gd, args.g, args.g4, config);
 
-    if let Some(g) = args.g {
-        if g != calc.genus() {
-            return Err(format!(
-                "expected genus g = {g}, but computed g = {}",
-                calc.genus()
-            ).into());
-        }
-    }
-
-    calc.run();
-
-    let format_lines = |rs: &[yui_hfk::g_zero::Region]| -> String {
-        rs.iter().map(|r| format!("  {r}")).collect::<Vec<_>>().join("\n")
-    };
-
-    let result = if calc.resigned().is_empty() && calc.accepted().len() == 2 {
-        let r = calc.accepted().iter().find(|r| r.corners()[1].i == 0).unwrap();
-        let t = r.corners()[1].j;
-        format!("τ = {t}")
+    if let Ok(t) = t {
+        Ok(format!("{t}"))
     } else {
-        format!(
-            "accepted:\n{}\n\nresigned:\n{}",
-            format_lines(calc.accepted()),
-            format_lines(calc.resigned()),
-        )
-    };
-
-    Ok(result)
+        error!("Unable to compute τ.");
+        Err(format!("?").into())
+    }
 }
