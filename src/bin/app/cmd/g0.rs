@@ -30,6 +30,10 @@ pub struct Args {
     #[arg(long)]
     pub no_filter_gens: bool,
 
+    /// Don't auto-accept when only one candidate region remains
+    #[arg(long)]
+    pub no_accept_if_unique: bool,
+
     /// Try the U-specialization NG fast-path on large systems
     #[arg(long)]
     pub try_fast_ng: bool,
@@ -65,11 +69,11 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
     let config = G0CalcConfig {
         filter_regions: !args.no_filter_regions,
         filter_gens:    !args.no_filter_gens,
+        accept_if_unique: !args.no_accept_if_unique,
         try_fast_ng:    args.try_fast_ng,
         max_size:       args.max_size.unwrap_or(defaults.max_size),
         max_piv:        args.max_piv.unwrap_or(defaults.max_piv),
         chunk:          args.chunk.unwrap_or(defaults.chunk),
-        accept_if_unique: true,
     };
 
     let mut calc = G0Calc::from_gd(&gd, args.g4, args.tau, config);
