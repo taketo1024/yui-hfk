@@ -114,20 +114,20 @@ impl G0Calc {
         debug!("initial candidate regions: {}", candidates.regions.len());
 
         if config.filter_regions { 
-            candidates.deduplicate();
-            debug!("  deduplicated -> {}", candidates.regions.len());
+            candidates.desymmetrize();
+            debug!("  desymmetrize -> {}", candidates.regions.len());
 
             candidates.filter_by_hfk(&hfk);
-            debug!("  filtered by hfk -> {}", candidates.regions.len());
+            debug!("  filter by hfk -> {}", candidates.regions.len());
 
             if let Some(g4) = g4 { 
                 candidates.filter_by_g4(g4);
-                debug!("  filtered by g4({g4}) -> {}", candidates.regions.len());
+                debug!("  filter by g4={g4} -> {}", candidates.regions.len());
             }
 
             if let Some(tau) = tau { 
                 candidates.filter_by_tau(tau);
-                debug!("  filtered by tau({tau}) -> {}", candidates.regions.len());
+                debug!("  filter by tau={tau} -> {}", candidates.regions.len());
             }
         }
 

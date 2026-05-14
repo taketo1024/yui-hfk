@@ -73,7 +73,7 @@ impl Candidates {
 
     /// Removes symmetric pairs {R, Rᵀ} in place, keeping the one with the
     /// smaller shift number (max i-coordinate).
-    pub fn deduplicate(&mut self) {
+    pub fn desymmetrize(&mut self) {
         let mut result: Vec<Region> = Vec::new();
         for r in self.regions.drain(..) {
             let rt = r.transposed();
@@ -246,7 +246,7 @@ mod tests {
         // With g4=0: only corners with |i+j| ≤ 0 (i.e. i+j=0) survive.
         // R(0,0): |0|=0 ✓. R(-1,0)∪R(0,-1): |-1|=1 > 0. R(0,1): |1|=1 > 0.
         let mut cs = Candidates::generate_from(1);
-        cs.deduplicate();
+        cs.desymmetrize();
         cs.filter_by_g4(0);
         assert_eq!(cs.regions, vec![Region::simple(0, 0)]);
     }
@@ -279,7 +279,7 @@ mod tests {
     #[test]
     fn test_deduplicate_genus1() {
         let mut cs = Candidates::generate_from(1);
-        cs.deduplicate();
+        cs.desymmetrize();
         // Three candidates after dedup: R(-1,0)∪R(0,-1), R(0,0), R(0,1)
         assert_eq!(cs.regions.len(), 3);
         assert!(cs.regions.contains(&Region::new([Corner::new(-1, 0), Corner::new(0, -1)])));
@@ -294,7 +294,7 @@ mod tests {
         let gd = GridDiagram::unknot();
         let hfk = HFK::from(&gd);
         let mut cs = Candidates::generate_from(hfk.genus() as usize);
-        cs.deduplicate();
+        cs.desymmetrize();
         cs.filter_by_hfk(&hfk);
         assert_eq!(cs.regions, vec![Region::simple(0, 0)]);
     }
@@ -306,7 +306,7 @@ mod tests {
         // Only R(0,1) passes both conditions.
         let hfk = hfk_from(&[(0, 1, 1), (-1, 0, 1), (-2, -1, 1)]);
         let mut cs = Candidates::generate_from(hfk.genus() as usize);
-        cs.deduplicate();
+        cs.desymmetrize();
         cs.filter_by_hfk(&hfk);
         assert_eq!(cs.regions, vec![Region::simple(0, 1)]);
     }
@@ -317,7 +317,7 @@ mod tests {
         // S₀ = {(0,0)}, so only corners at (0,0) survive.
         let hfk = hfk_from(&[(1, 1, 1), (0, 0, 3), (-1, -1, 1)]);
         let mut cs = Candidates::generate_from(hfk.genus() as usize);
-        cs.deduplicate();
+        cs.desymmetrize();
         cs.filter_by_hfk(&hfk);
         assert_eq!(cs.regions, vec![Region::simple(0, 0)]);
     }
