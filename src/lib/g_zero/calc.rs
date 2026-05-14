@@ -18,6 +18,7 @@ pub struct G0CalcConfig {
     pub filter_regions: bool,
     pub filter_gens: bool,
     pub try_fast_ng: bool,
+    pub accept_if_unique: bool,
     pub max_size: usize,
     pub max_piv: usize,
     pub chunk: usize,
@@ -29,6 +30,7 @@ impl Default for G0CalcConfig {
             filter_regions: true,
             filter_gens: true,
             try_fast_ng: false,
+            accept_if_unique: false,
             max_size: 1_000_000,
             max_piv: 500_000,
             chunk: 100_000,
@@ -71,21 +73,17 @@ impl G0Calc {
 
         Self::validate(&hfk, g, g4, tau);
 
-        let candidates = Self::make_candidates(&hfk, g4, tau, config.filter_regions);
-        info!("candidate regions: {}", candidates.regions.len());
-        for r in &candidates.regions {
-            info!("  {r}");
-        }
+        let candidates = Self::make_candidates(&hfk, g4, tau, config);
 
         info!("prepare generators ...");
         let gc = Self::build_complex(gd, &candidates, config.filter_gens);
         info!("  #generators: {}", gc.gens.len());
 
-        info!("compute homological generator");
+        info!("compute homological generator.");
         let z = gc.hom_gen();
 
-        if z.is_zero() { 
-            info!("  homological generator contained in all candidate regions!");
+        if z.is_zero() && !candidates.regions.is_empty() { 
+            info!("  homological generator contained in all candidate regions.");
         }
 
         Self::new(gc, g, z, candidates, config)
@@ -107,13 +105,13 @@ impl G0Calc {
         }
     }
 
-    fn make_candidates(hfk: &HFK, g4: Option<usize>, tau: Option<isize>, filter_regions: bool) -> Candidates { 
+    fn make_candidates(hfk: &HFK, g4: Option<usize>, tau: Option<isize>, config: G0CalcConfig) -> Candidates { 
         let g = hfk.genus();
         let mut candidates = Candidates::generate_from(g as usize);
 
         debug!("initial candidate regions: {}", candidates.regions.len());
 
-        if filter_regions { 
+        if config.filter_regions { 
             candidates.deduplicate();
             debug!("  deduplicated -> {}", candidates.regions.len());
 
@@ -132,6 +130,20 @@ impl G0Calc {
         }
 
         candidates.sort();
+
+        info!("candidate regions: {}", candidates.regions.len());
+        for r in &candidates.regions {
+            info!("  {r}");
+        }
+
+        if config.accept_if_unique && candidates.regions.len() == 1 { 
+            let r = candidates.regions.pop().unwrap();
+            info!("accept unique region:");
+            info!("  {r}");
+
+            candidates.accept(&r);
+        }
+
         candidates
     }
 
@@ -380,13 +392,21 @@ mod tests {
     use crate::GridDiagram;
     use crate::g_zero::Corner;
 
+    fn config() -> G0CalcConfig {
+        G0CalcConfig { 
+            filter_regions: false, 
+            filter_gens: false, 
+             ..Default::default() 
+        }
+    }
+
     #[test]
     fn test_find_homologous_unknot_already_inside() {
         // For the unknot the hom_gen lies at (alg=0, alex=0) ∈ R(0,0),
         // so z0 = cutoff(z, R(0,0)) = 0.  The system is trivially satisfied
         // with w = 0, and the function returns z unchanged.
         let gd = GridDiagram::unknot();
-        let cfg = G0CalcConfig { filter_regions: false, filter_gens: false, ..Default::default() };
+        let cfg = config();
         let calc = G0Calc::from_gd(&gd, None, None, cfg);
 
         let z = &calc.z;
@@ -403,7 +423,7 @@ mod tests {
     fn test_find_homologous_unknot_none() {
         // R[(-1,0), (0,-1)] lies strictly below the hom_gen at (0,0).
         let gd = GridDiagram::unknot();
-        let cfg = G0CalcConfig { filter_regions: false, filter_gens: false, ..Default::default() };
+        let cfg = config();
         let calc = G0Calc::from_gd(&gd, None, None, cfg);
         let z = &calc.z;
 
@@ -418,7 +438,7 @@ mod tests {
         // For the trefoil (genus 1), R(0,1) is the expected realizable region.
         // find_homologous should return Some(z1) where z1 is a cycle inside R(0,1).
         let gd = GridDiagram::trefoil();
-        let cfg = G0CalcConfig { filter_regions: false, filter_gens: false, ..Default::default() };
+        let cfg = config();
         let calc = G0Calc::from_gd(&gd, None, None, cfg);
         let z = &calc.z;
         assert!(!z.is_zero());
@@ -431,7 +451,7 @@ mod tests {
     }
 
     fn accepted(gd: GridDiagram) -> Vec<Region> {
-        let cfg = G0CalcConfig { filter_regions: false, filter_gens: false, ..Default::default() };
+        let cfg = config();
         let mut calc = G0Calc::from_gd(&gd, None, None, cfg);
         calc.run();
 

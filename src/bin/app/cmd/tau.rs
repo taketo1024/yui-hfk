@@ -67,6 +67,7 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
         max_size:       args.max_size.unwrap_or(defaults.max_size),
         max_piv:        args.max_piv.unwrap_or(defaults.max_piv),
         chunk:          args.chunk.unwrap_or(defaults.chunk),
+        ..Default::default()
     };
 
     let t = tau_with_config(&gd, args.g, args.g4, config);

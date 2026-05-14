@@ -69,6 +69,7 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
         max_size:       args.max_size.unwrap_or(defaults.max_size),
         max_piv:        args.max_piv.unwrap_or(defaults.max_piv),
         chunk:          args.chunk.unwrap_or(defaults.chunk),
+        accept_if_unique: true,
     };
 
     let mut calc = G0Calc::from_gd(&gd, args.g4, args.tau, config);
