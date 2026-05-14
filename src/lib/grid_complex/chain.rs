@@ -1,7 +1,9 @@
+use itertools::Itertools;
 use num_traits::Zero;
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
 use yui_core::poly::MultiVar;
+use yui_homology::{Grid2, isize2};
 
 use crate::grid_complex::GCInfGen;
 
@@ -11,6 +13,7 @@ pub trait GCInfChainExt {
     fn alex_degree(&self) -> isize;
     fn alg_degree(&self) -> isize;
     fn mul(&self, u: &MultiVar<'U', usize>) -> Self;
+    fn support_grid(&self) -> Grid2<usize>;
 }
 
 impl GCInfChainExt for Lc<GCInfGen, FF2> {
@@ -30,6 +33,13 @@ impl GCInfChainExt for Lc<GCInfGen, FF2> {
 
     fn mul(&self, u: &MultiVar<'U', usize>) -> Self {
         self.map_gens(|g| GCInfGen::new(g.gen.clone(), &g.u * u))
+    }
+    
+    fn support_grid(&self) -> Grid2<usize> {
+        let counts = self.iter()
+            .filter(|(_, c)| !c.is_zero())
+            .counts_by(|(g, _)| isize2(g.alg_deg(), g.alex_deg()));
+        Grid2::from_iter(counts)
     }
 }
 
@@ -145,5 +155,17 @@ pub(crate) mod tests {
         let g2 = make_gen(1, 2, 0, 0, &[0, 1]); // -(1) = -1
         let lc = lc_of(&[g1, g2]);
         assert_eq!(lc.alg_degree(), -1);
+    }
+
+    #[test]
+    fn test_support_grid() {
+        let g1 = make_gen(0, 2, 0, 0, &[]);     // alg=0,  alex=0
+        let g2 = make_gen(1, 2, 0, 3, &[1]);    // alg=-1, alex=3-1=2
+        let g3 = make_gen(2, 2, 0, 3, &[0, 1]); // alg=-1, alex=3-1=2 (same bidegree as g2)
+        let lc = lc_of(&[g1, g2, g3]);
+        let g = lc.support_grid();
+        assert_eq!(g[(0, 0)], 1);
+        assert_eq!(g[(-1, 2)], 2);
+        assert_eq!(g[(0, 1)], 0);
     }
 }
