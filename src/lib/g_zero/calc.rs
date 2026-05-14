@@ -17,8 +17,8 @@ use super::{Candidates, Region};
 pub struct G0CalcConfig {
     pub filter_regions: bool,
     pub filter_gens: bool,
-    pub try_fast_ng: bool,
     pub accept_if_unique: bool,
+    pub try_fast_ng: bool,
     pub max_size: usize,
     pub max_piv: usize,
     pub chunk: usize,
@@ -29,8 +29,8 @@ impl Default for G0CalcConfig {
         Self {
             filter_regions: true,
             filter_gens: true,
-            try_fast_ng: false,
             accept_if_unique: false,
+            try_fast_ng: false,
             max_size: 1_000_000,
             max_piv: 500_000,
             chunk: 100_000,
