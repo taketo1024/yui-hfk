@@ -79,11 +79,13 @@ impl G0Calc {
         let gc = Self::build_complex(gd, &candidates, config.filter_gens);
         info!("  #generators: {}", gc.gens.len());
 
-        info!("compute homological generator.");
+        info!("compute homological generator..");
         let z = gc.hom_gen();
-
-        if z.is_zero() && !candidates.regions.is_empty() { 
-            info!("  homological generator contained in all candidate regions.");
+        
+        if z.is_zero() { 
+            info!("  z = 0.");
+        } else {
+            info!("  support of z: \n{}", z.support_grid().display_table());
         }
 
         Self::new(gc, g, z, candidates, config)
