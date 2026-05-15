@@ -75,36 +75,13 @@ impl GridDiagram {
         GridDiagram::new(os, xs, size)
     }
 
-    /// Load a grid diagram by knot name (e.g. `"3_1"`) or by file path.
-    /// Named knots are looked up in `resources/` relative to the crate root.
-    pub fn load(name_or_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        const RESOURCE_DIR: &str = "resources/";
-        let path = if Self::is_valid_name(name_or_path) {
-            let dir = std::env!("CARGO_MANIFEST_DIR");
-            format!("{dir}/{RESOURCE_DIR}{name_or_path}.json")
-        } else {
-            name_or_path.to_string()
-        };
-        Self::load_json(path)
-    }
-
-    fn is_valid_name(s: &str) -> bool {
-        // matches names like "0_1", "3_1", "10_165"
-        let mut parts = s.splitn(2, '_');
-        let a = parts.next().map(|p| p.parse::<u32>().is_ok()).unwrap_or(false);
-        let b = parts.next().map(|p| p.parse::<u32>().is_ok()).unwrap_or(false);
-        a && b
-    }
-
-    /// Load a grid diagram from a JSON file.
-    /// Expected format: `{"O": [u8, ...], "X": [u8, ...]}`
-    pub fn load_json(path: impl AsRef<Path>) -> Result<Self, Box<dyn std::error::Error>> {
-        let json_str = fs::read_to_string(path)?;
-        let data: serde_json::Value = serde_json::from_str(&json_str)?;
-
-        let os_seq: Vec<u8> = serde_json::from_value(data["O"].clone())?;
-        let xs_seq: Vec<u8> = serde_json::from_value(data["X"].clone())?;
-
+    /// Load a grid diagram by knot name (e.g. `"3_1"`) from the runtime
+    /// data dir. Expects `<data_dir>/grid_diagrams/<name>.json` with shape
+    /// `[[o-coords], [x-coords]]`. The data dir is resolved via
+    /// `$YUI_DATA_DIR` (or the platform default) — see `yui_core::util::data_dir`.
+    pub fn load(name: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let json_str = yui_core::util::data_dir::load_json("grid_diagrams", name)?;
+        let [os_seq, xs_seq]: [Vec<u8>; 2] = serde_json::from_str(&json_str)?;
         Ok(GridDiagram::from_sequences(&os_seq, &xs_seq))
     }
 
