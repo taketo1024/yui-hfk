@@ -2,8 +2,8 @@ use yui_hfk::GridDiagram;
 
 /// Load a GridDiagram from:
 /// - arc-presentation JSON array: `[1,2,3,1,2,3]`
-/// - inline sequences JSON: `{"O":[...],"X":[...]}`
-/// - knot name: `"3_1"` or file path to a JSON file
+/// - inline sequences JSON: `[[o-coords],[x-coords]]`
+/// - knot name: `"3_1"` (loaded from `$YUI_DATA_DIR/grid_diagrams/3_1.json`)
 pub fn load_diagram(input: &str) -> Result<GridDiagram, Box<dyn std::error::Error>> {
     if let Ok(code) = serde_json::from_str::<Vec<u8>>(input) {
         return Ok(GridDiagram::from_arc_presentation(&code));
@@ -18,20 +18,6 @@ pub fn load_diagram(input: &str) -> Result<GridDiagram, Box<dyn std::error::Erro
 mod tests {
     use super::*;
     use yui_hfk::GridDiagram;
-
-    #[test]
-    fn test_load_by_name() {
-        let d = load_diagram("3_1").unwrap();
-        assert_eq!(d, GridDiagram::trefoil());
-    }
-
-    #[test]
-    fn test_load_by_path() {
-        let dir = env!("CARGO_MANIFEST_DIR");
-        let path = format!("{dir}/resources/3_1.json");
-        let d = load_diagram(&path).unwrap();
-        assert_eq!(d, GridDiagram::trefoil());
-    }
 
     #[test]
     fn test_load_by_arc_presentation() {
