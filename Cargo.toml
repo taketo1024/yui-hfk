@@ -16,6 +16,7 @@ path = "src/bin/main.rs"
 [features]
 default = ["multithread"]
 multithread = ["rayon"]
+test-utils = []
 
 [profile.release]
 overflow-checks = true

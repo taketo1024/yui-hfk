@@ -308,14 +308,9 @@ mod tests {
     }
 
     #[test]
-    fn test_load() {
-        let g = GridDiagram::load("3_1").unwrap();
+    fn test_data_trefoil() {
+        let g = GridDiagram::test_data("3_1").unwrap();
         assert_eq!(g.grid_number(), 5);
         assert_eq!(g, GridDiagram::trefoil());
-    }
-
-    #[test]
-    fn test_load_invalid_name_treated_as_path() {
-        assert!(GridDiagram::load("not_a_real_file.json").is_err());
     }
 }
