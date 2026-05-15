@@ -3,8 +3,6 @@ use num_integer::Integer;
 use crate::grid_diagram::MAX_SIZE;
 
 use super::point::{GridPoint, odd_points};
-use std::fs;
-use std::path::Path;
 
 /// A grid diagram representing a knot or link.
 ///
