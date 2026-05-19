@@ -145,7 +145,7 @@ impl Region {
 
     // Drop terms of `z` whose (alg_deg, alex_deg) is inside self.
     pub fn cutoff(&self, z: &Lc<GCInfGen, FF2>) -> Lc<GCInfGen, FF2> {
-        z.filter_gens(|g| !self.contains_gen(g))
+        z.filtered(|g| !self.contains_gen(g))
     }
 
     // ---- internal ----
