@@ -119,24 +119,24 @@ impl LcKey for GCGen {}
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct GCInfGen {
     pub u: MultiVar<'U', usize>,
-    pub gen: GCGen,
+    pub x: GCGen,
 }
 
 impl GCInfGen {
-    pub fn new(gen: GCGen, u: MultiVar<'U', usize>) -> Self {
-        GCInfGen { u, gen }
+    pub fn new(u: MultiVar<'U', usize>, x: GCGen) -> Self {
+        GCInfGen { u, x }
     }
 
-    pub fn from_raw(gen: GCGen) -> Self {
-        GCInfGen::new(gen, MultiVar::default())
+    pub fn from_raw(x: GCGen) -> Self {
+        GCInfGen::new(MultiVar::default(), x)
     }
 
     pub fn maslov_deg(&self) -> isize {
-        self.gen.maslov_deg - 2 * self.u.total_deg() as isize
+        self.x.maslov_deg - 2 * self.u.total_deg() as isize
     }
 
     pub fn alex_deg(&self) -> isize {
-        self.gen.alex_deg + self.alg_deg()
+        self.x.alex_deg + self.alg_deg()
     }
 
     pub fn alg_deg(&self) -> isize {
@@ -145,8 +145,8 @@ impl GCInfGen {
 }
 
 impl From<GCGen> for GCInfGen {
-    fn from(gen: GCGen) -> Self {
-        Self::from_raw(gen)
+    fn from(x: GCGen) -> Self {
+        Self::from_raw(x)
     }
 }
 
@@ -158,13 +158,13 @@ impl PartialOrd for GCInfGen {
 
 impl Ord for GCInfGen {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.gen.cmp(&other.gen).then_with(|| self.u.cmp(&other.u))
+        self.x.cmp(&other.x).then_with(|| self.u.cmp(&other.u))
     }
 }
 
 impl fmt::Display for GCInfGen {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} ⊗ {}", self.u, self.gen)
+        write!(f, "{} ⊗ {}", self.u, self.x)
     }
 }
 
@@ -219,10 +219,10 @@ mod tests {
 
     #[test]
     fn test_inf_gen_degrees() {
-        let gen = GCGen::from_raw(0, 3, 4, 2);
+        let x = GCGen::from_raw(0, 3, 4, 2);
         // U_0^2 * U_1^1 has total_deg = 3
         let u = MultiVar::<'U', usize>::from([2usize, 1]);
-        let t = GCInfGen::new(gen, u);
+        let t = GCInfGen::new(u, x);
         assert_eq!(t.maslov_deg(), 4 - 2 * 3);  // -2
         assert_eq!(t.alex_deg(), 2 - 3);        // -1
     }

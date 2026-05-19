@@ -355,10 +355,10 @@ impl G0Calc {
         c: &[FF2],
     ) -> bool {
         let lift = |x: &GCGen| Lc::from(GCInfGen::from(x.clone()));
-        let proj = move |x: &GCInfGen| if x.u.eval::<FF2>(c).is_zero() { 
-            Lc::zero() 
-        } else { 
-            Lc::from(x.gen.clone()) 
+        let proj = move |g: &GCInfGen| if g.u.eval::<FF2>(c).is_zero() {
+            Lc::zero()
+        } else {
+            Lc::from(g.x.clone())
         };
 
         debug!("create specialized matrix ...");

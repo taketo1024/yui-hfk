@@ -4,7 +4,7 @@ use ahash::AHashMap;
 use yui_homology::range_of;
 use crate::grid_diagram::{GridDiagram, GridPoint, GridRect};
 use crate::misc::heap::heap_transpositions;
-use super::gen::GCGen;
+use super::gc_gen::GCGen;
 
 pub struct GCGenSet {
     list: Vec<GCGen>, // gens at the same bidegree are contiguous; global order is unspecified

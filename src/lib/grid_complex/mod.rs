@@ -1,8 +1,8 @@
 pub mod complex;
 pub use complex::{GridComplex, GCType, GCTilde, GCHat, GCMinus, GCFiltered};
 
-pub mod gen;
-pub use gen::{GCGen, GCInfGen};
+pub mod gc_gen;
+pub use gc_gen::{GCGen, GCInfGen};
 
 pub mod gen_table;
 pub use gen_table::GCGenSet;

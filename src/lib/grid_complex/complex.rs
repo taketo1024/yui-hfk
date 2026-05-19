@@ -7,9 +7,9 @@ use yui_core::lc::Lc;
 use yui_core::num::FF2;
 use yui_homology::{ChainComplex, ChainComplex2, Grid, Homology, Homology2, Summand, isize2, range_of};
 use yui_core::poly::MultiVar;
-use crate::grid_complex::r#gen::GCInfGen;
+use crate::grid_complex::gc_gen::GCInfGen;
 use crate::grid_diagram::{GridDiagram, GridRect};
-use super::gen::GCGen;
+use super::gc_gen::GCGen;
 use super::gen_table::GCGenSet;
 
 pub trait GCType {
@@ -121,7 +121,7 @@ impl<V: GCType> GridComplex<V> {
                     let u = MultiVar::from_iter(
                         (0..n).map(|k| (k, combo.iter().filter(|&&v| v == k).count()))
                     );
-                    GCInfGen::new(x.clone(), u)
+                    GCInfGen::new(u, x.clone())
                 })
             })
             .collect_vec()
@@ -193,14 +193,14 @@ impl<V: GCInfType> GridComplex<V> {
 
         z.iter().filter_map(|(t, r)| {
             if r.is_zero() { return None }
-            let dx = self.differentiate_gen(&t.gen).into_iter().map(|(y, rect)| {
+            let dx = self.differentiate_gen(&t.x).into_iter().map(|(y, rect)| {
                 // U_k appears in the differential if Os[k] is inside the rect.
                 let v = MultiVar::from_iter(
                     (0..n).filter_map(|k| 
                         rect.contains(os[k], grid_size, false).then_some((k, 1))
                     )
                 );
-                (GCInfGen::new(y, &t.u * v), FF2::one())
+                (GCInfGen::new(&t.u * v, y), FF2::one())
             });
             Some(dx)
         }).flatten().collect()

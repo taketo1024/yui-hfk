@@ -27,7 +27,7 @@ impl GridComplex<GCFiltered> {
         let tl_seq: Vec<u8> = o0.iter().map(|&o| ((o as usize + 1) % n) as u8).collect();
         let x0 = GCGen::from_raw(GCGen::encode(&tl_seq), n as u8, 0, 0);
 
-        let mut z: Lc<GCInfGen, FF2> = Lc::from(GCInfGen::new(x0, MultiVar::<'U', usize>::one()));
+        let mut z: Lc<GCInfGen, FF2> = Lc::from(GCInfGen::new(MultiVar::<'U', usize>::one(), x0));
 
         curr_os = o0;
         for (i, j) in trans {
@@ -37,8 +37,8 @@ impl GridComplex<GCFiltered> {
 
         // Replace dummy generators with actual generators from the diagram
         z.into_iter().filter_map(|(inf_gen, coeff)| {
-            self.gens.gen_from_code(inf_gen.gen.code).map(|actual| {
-                (GCInfGen::new(actual.clone(), inf_gen.u), coeff)
+            self.gens.gen_from_code(inf_gen.x.code).map(|actual| {
+                (GCInfGen::new(inf_gen.u, actual.clone()), coeff)
             })
         }).collect()
     }
@@ -80,8 +80,8 @@ fn apply_pentagon(
 
     z.into_iter()
         .flat_map(|(inf_gen, _)| {
-            let x_seq = inf_gen.gen.sequence();
-            let x_pts = inf_gen.gen.points();
+            let x_seq = inf_gen.x.sequence();
+            let x_pts = inf_gen.x.points();
             let q = swap_u(&inf_gen.u, i, j, n);
             let o_ref = o_pts.as_slice();
             (0..n).filter_map(move |k| {
@@ -91,7 +91,7 @@ fn apply_pentagon(
                 let rect = find_empty_rect_containing(&x_pts, j, k, v, grid_size)?;
                 let c = compute_u_coeff(&rect, o_ref, oi, oj, i, j, n, grid_size);
                 let y = GCGen::from_raw(GCGen::encode(&y_seq), n as u8, 0, 0);
-                Some((GCInfGen::new(y, &q * &c), FF2::one()))
+                Some((GCInfGen::new(&q * &c, y), FF2::one()))
             })
         })
         .collect()

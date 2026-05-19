@@ -32,7 +32,7 @@ impl GCInfChainExt for Lc<GCInfGen, FF2> {
     fn alg_degree(&self)    -> isize { max_deg(self, GCInfGen::alg_deg)    }
 
     fn mul(&self, u: &MultiVar<'U', usize>) -> Self {
-        self.map_ref(|g, r| (GCInfGen::new(g.gen.clone(), &g.u * u), r.clone()))
+        self.map_ref(|g, r| (GCInfGen::new(&g.u * u, g.x.clone()), r.clone()))
     }
     
     fn support_grid(&self) -> Grid2<usize> {
@@ -64,7 +64,7 @@ pub(crate) mod tests {
         let u = MultiVar::<'U', usize>::from_iter(
             u_degs.iter().copied().enumerate().filter(|(_, d)| *d > 0)
         );
-        GCInfGen::new(base, u)
+        GCInfGen::new(u, base)
     }
 
     pub fn lc_of(gens: &[GCInfGen]) -> Lc<GCInfGen, FF2> {
