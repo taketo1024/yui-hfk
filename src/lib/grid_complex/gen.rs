@@ -1,6 +1,6 @@
 use std::fmt;
 use yui_core::poly::MultiVar;
-use yui_core::{Elem, lc::Gen};
+use yui_core::{Elem, lc::LcKey};
 use crate::grid_diagram::{GridDiagram, GridPoint, point::even_points};
 
 #[derive(Clone, Debug, Default)]
@@ -114,7 +114,7 @@ impl Elem for GCGen {
     }
 }
 
-impl Gen for GCGen {}
+impl LcKey for GCGen {}
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct GCInfGen {
@@ -174,7 +174,7 @@ impl Elem for GCInfGen {
     }
 }
 
-impl Gen for GCInfGen {}
+impl LcKey for GCInfGen {}
 
 #[cfg(test)]
 mod tests {

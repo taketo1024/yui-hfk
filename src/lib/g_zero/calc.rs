@@ -1,6 +1,6 @@
 use log::*;
 use num_traits::{One, Zero};
-use yui_core::lc::{Gen, Lc};
+use yui_core::lc::{LcKey, Lc};
 use yui_core::num::FF2;
 use yui_core::poly::MultiVar;
 use yui_homology::{DisplayTable, Summand};
@@ -379,7 +379,7 @@ fn create_ay<X>(
     f: impl Fn(&Lc<X, FF2>) -> Lc<X, FF2>,
 ) -> (SpMat<FF2>, SpVec<FF2>)
 where
-    X: Gen + Into<GCInfGen>,
+    X: LcKey + Into<GCInfGen>,
 {
     let a = gen_w.make_matrix(gen_z, |x| f(x));
     let y = gen_z.vectorize(y_target);

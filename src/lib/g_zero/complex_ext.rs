@@ -36,7 +36,7 @@ impl GridComplex<GCFiltered> {
         let gens = pts.iter().flat_map(|&(i, j)| {
             self.inf_gens_e(k, j, (-i) as usize)
         });
-        Summand::from_raw_gens(gens)
+        Summand::from_raw_generators(gens)
     }
 
     // Count base GCGens at the given points without allocating them.
@@ -52,7 +52,7 @@ impl GridComplex<GCFiltered> {
         let gens = pts.iter().flat_map(|&(i, j)| {
             self.gens.raw_gens(k - 2 * i, j - i).iter().cloned()
         });
-        Summand::from_raw_gens(gens)
+        Summand::from_raw_generators(gens)
     }
 }
 

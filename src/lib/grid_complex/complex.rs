@@ -171,7 +171,7 @@ impl GridComplex<GCTilde> {
         let this = &self;
         let summands = {
             Grid::generate(support, move |idx| {
-                Summand::from_raw_gens(this.raw_gens(idx.0, idx.1).iter().cloned())
+                Summand::from_raw_generators(this.raw_gens(idx.0, idx.1).iter().cloned())
             })
         };
 
@@ -222,7 +222,7 @@ impl<V: GCBigradedType + GCInfType + Send + Sync + 'static> GridComplex<V> {
 
         let this = &self;
         let summands = Grid::generate(support, move |idx| {
-            Summand::from_raw_gens(this.inf_gens(idx.0, idx.1))
+            Summand::from_raw_generators(this.inf_gens(idx.0, idx.1))
         });
 
         ChainComplex2::new(summands, isize2(-1, 0), move |_, z| {
@@ -251,7 +251,7 @@ impl GridComplex<GCFiltered> {
         let this = &self;
         let summands = Grid::generate(m_range.rev(), move |i| {
             let gens = a_range.clone().flat_map(|j| this.inf_gens(i, j));
-            Summand::from_raw_gens(gens)
+            Summand::from_raw_generators(gens)
         });
 
         ChainComplex::new(summands, -1, move |_, z| {
