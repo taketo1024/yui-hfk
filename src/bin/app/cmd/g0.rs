@@ -107,7 +107,7 @@ fn validate(args: &Args) {
     }}
 
     if let Some(g4) = args.g4 { if let Some(tau) = args.tau { 
-        let t_abs = tau.abs() as usize;
+        let t_abs = tau.unsigned_abs();
         assert!(t_abs <= g4, "Invalid inequality: |tau| = {t_abs} > g4 = {g4}");
     }}
 }

@@ -32,7 +32,7 @@ impl GCInfChainExt for Lc<GCInfGen, FF2> {
     fn alg_degree(&self)    -> isize { max_deg(self, GCInfGen::alg_deg)    }
 
     fn mul(&self, u: &MultiVar<'U', usize>) -> Self {
-        self.map_ref(|g, r| (GCInfGen::new(&g.u * u, g.x.clone()), r.clone()))
+        self.map_ref(|g, r| (GCInfGen::new(&g.u * u, g.x.clone()), *r))
     }
     
     fn support_grid(&self) -> Grid2<usize> {

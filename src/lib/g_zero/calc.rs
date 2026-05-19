@@ -94,7 +94,7 @@ impl G0Calc {
     fn validate(hfk: &HFK, g: usize, g4: Option<usize>, tau: Option<isize>) { 
         // MEMO: replace with if-let chain
         if let Some(g4) = g4 { if let Some(tau) = tau { 
-            let t_abs = tau.abs() as usize;
+            let t_abs = tau.unsigned_abs();
             assert!(t_abs <= g4, "Invalid inequality: |tau| = {t_abs} > g4 = {g4}");
         }}
         
@@ -117,7 +117,7 @@ impl G0Calc {
             candidates.desymmetrize();
             debug!("  desymmetrize -> {}", candidates.regions.len());
 
-            candidates.filter_by_hfk(&hfk);
+            candidates.filter_by_hfk(hfk);
             debug!("  filter by hfk -> {}", candidates.regions.len());
 
             if let Some(g4) = g4 { 
@@ -209,7 +209,7 @@ impl G0Calc {
         if r.contains_chain(&self.z) {
             debug!("  z contained in {r}.");
             info!("OK: {r}");
-            self.candidates.accept(&r);
+            self.candidates.accept(r);
             return
         }
 
@@ -220,15 +220,15 @@ impl G0Calc {
         match self.find_homologous(&z_shifted, &r_shifted) {
             Ok(Some(_)) => {
                 info!("OK: {r}");
-                self.candidates.accept(&r);
+                self.candidates.accept(r);
             }
             Ok(None) => {
                 info!("NG: {r}");
-                self.candidates.reject(&r);
+                self.candidates.reject(r);
             }
             Err(G0CalcError::Resigned) => {
                 info!("RESIGN: {r}");
-                self.candidates.resign(&r);
+                self.candidates.resign(r);
             }
         }
     }
@@ -363,8 +363,8 @@ impl G0Calc {
 
         debug!("create specialized matrix ...");
         let (a_c, y_c) = create_ay(
-            raw_gen_w, raw_gen_z, &z0.apply(&proj),
-            |x| r.cutoff(&self.gc.differentiate(&x.apply(&lift))).apply(&proj),
+            raw_gen_w, raw_gen_z, &z0.apply(proj),
+            |x| r.cutoff(&self.gc.differentiate(&x.apply(lift))).apply(proj),
         );
 
         debug!("  specialized: {:?} (nnz = {})", a_c.shape(), a_c.nnz());
@@ -415,9 +415,9 @@ mod tests {
         assert!(!z.is_zero());
 
         let r = Region::simple(0, 0);
-        assert!(r.contains_chain(&z));
+        assert!(r.contains_chain(z));
         
-        let z1 = calc.find_homologous(&z, &r).unwrap().expect("expected Some");
+        let z1 = calc.find_homologous(z, &r).unwrap().expect("expected Some");
         assert!(z1.is_zero());
     }
 
@@ -432,7 +432,7 @@ mod tests {
         assert!(!z.is_zero());
 
         let r = Region::new([Corner::new(-1, 0), Corner::new(0, -1)]);
-        assert_eq!(calc.find_homologous(&z, &r), Ok(None));
+        assert_eq!(calc.find_homologous(z, &r), Ok(None));
     }
 
     #[test]
@@ -446,9 +446,9 @@ mod tests {
         assert!(!z.is_zero());
 
         let r = Region::simple(0, 1);
-        assert!(r.contains_chain(&z));
+        assert!(r.contains_chain(z));
 
-        let z1 = calc.find_homologous(&z, &r).unwrap().expect("expected Some for trefoil R(0,1)");
+        let z1 = calc.find_homologous(z, &r).unwrap().expect("expected Some for trefoil R(0,1)");
         assert!(z1.is_zero());
     }
 

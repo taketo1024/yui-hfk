@@ -13,7 +13,7 @@ pub fn tau_with_config(gd: &GridDiagram, g: Option<usize>, g4: Option<usize>, co
 
     let g = g.unwrap_or_else(|| { 
         debug!("compute genus ...");
-        genus(&gd)
+        genus(gd)
     });
     debug!("  g = {g}");
 
@@ -57,7 +57,6 @@ fn compute_tau(gd: &GridDiagram, g: usize, g4: Option<usize>, config: G0CalcConf
 
     info!("compute homological generator");
     let z = gc.hom_gen();
-    let g = g as usize;
     let mut calc = G0Calc::new(gc, g, z, candidates, config);
 
     calc.run();
@@ -77,7 +76,7 @@ fn compute_tau(gd: &GridDiagram, g: usize, g4: Option<usize>, config: G0CalcConf
 
 fn validate(g4: Option<usize>, tau: isize) { 
     if let Some(g4) = g4 {
-        let t_abs = tau.abs() as usize;
+        let t_abs = tau.unsigned_abs();
         assert!(t_abs <= g4, "Invalid inequality: |tau| = {t_abs} > g4 = {g4}");
     }
 }

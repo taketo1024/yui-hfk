@@ -42,7 +42,7 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
 
     let a_bound = args.a_bound;
     let pred = move |x: &yui_hfk::GCGen| {
-        a_bound.map_or(true, |b| x.alex_deg >= b)
+        a_bound.is_none_or(|b| x.alex_deg >= b)
     };
 
     let mut buff = String::new();

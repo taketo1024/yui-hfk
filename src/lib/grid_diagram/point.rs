@@ -64,6 +64,22 @@ impl PartialOrd for GridPoint {
     }
 }
 
+/// Convert a sequence to even points: (2i, 2*seq[i]).
+pub fn even_points(seq: &[u8]) -> Vec<GridPoint> {
+    seq.iter()
+        .enumerate()
+        .map(|(i, &j)| GridPoint::new(2 * i as u8, 2 * j))
+        .collect()
+}
+
+/// Convert a sequence to odd points: (2i+1, 2*seq[i]+1).
+pub fn odd_points(seq: &[u8]) -> Vec<GridPoint> {
+    seq.iter()
+        .enumerate()
+        .map(|(i, &j)| GridPoint::new(2 * i as u8 + 1, 2 * j + 1))
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -119,20 +135,4 @@ mod tests {
         assert!(!(r < p));
         assert_eq!(p.partial_cmp(&r), None);
     }
-}
-
-/// Convert a sequence to even points: (2i, 2*seq[i]).
-pub fn even_points(seq: &[u8]) -> Vec<GridPoint> {
-    seq.iter()
-        .enumerate()
-        .map(|(i, &j)| GridPoint::new(2 * i as u8, 2 * j))
-        .collect()
-}
-
-/// Convert a sequence to odd points: (2i+1, 2*seq[i]+1).
-pub fn odd_points(seq: &[u8]) -> Vec<GridPoint> {
-    seq.iter()
-        .enumerate()
-        .map(|(i, &j)| GridPoint::new(2 * i as u8 + 1, 2 * j + 1))
-        .collect()
 }
