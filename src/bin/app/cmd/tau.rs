@@ -82,7 +82,7 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
 }
 
 fn validate(args: &Args) { 
-    if let Some(g) = args.g { if let Some(g4) = args.g4 { 
+    if let Some(g) = args.g && let Some(g4) = args.g4 { 
         assert!(g4 <= g, "Invalid inequality: g4 = {g4} > g = {g}");
-    }}
+    }
 }

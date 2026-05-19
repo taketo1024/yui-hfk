@@ -93,10 +93,10 @@ impl G0Calc {
 
     fn validate(hfk: &HFK, g: usize, g4: Option<usize>, tau: Option<isize>) { 
         // MEMO: replace with if-let chain
-        if let Some(g4) = g4 { if let Some(tau) = tau { 
+        if let Some(g4) = g4 && let Some(tau) = tau { 
             let t_abs = tau.unsigned_abs();
             assert!(t_abs <= g4, "Invalid inequality: |tau| = {t_abs} > g4 = {g4}");
-        }}
+        }
         
         if let Some(g4) = g4 { 
             assert!(g4 <= g, "Invalid inequality: g4 = {g4} > g = {g}");
