@@ -5,7 +5,8 @@ use delegate::delegate;
 use itertools::Itertools;
 use num_integer::binomial;
 use num_traits::Zero;
-use yui_homology::{DisplayTable, Grid2, GridTrait, SummandTrait, isize2, range_of};
+use yui_core::IteratorExt;
+use yui_homology::{DisplayTable, Grid2, GridTrait, SummandTrait, isize2};
 
 use crate::{GCTilde, GridComplex, GridDiagram};
 
@@ -27,12 +28,12 @@ impl HFK {
         HFK { data }
     }
 
-    pub fn maslov_deg_range(&self) -> RangeInclusive<isize> { 
-        range_of(self.data.support().map(|x| x.0))
+    pub fn maslov_deg_range(&self) -> RangeInclusive<isize> {
+        self.data.support().map(|x| x.0).range().unwrap_or(0..=-1)
     }
 
-    pub fn alex_deg_range(&self) -> RangeInclusive<isize> { 
-        range_of(self.data.support().map(|x| x.1))
+    pub fn alex_deg_range(&self) -> RangeInclusive<isize> {
+        self.data.support().map(|x| x.1).range().unwrap_or(0..=-1)
     }
 
     delegate! { 
@@ -88,8 +89,8 @@ impl From<&GridDiagram> for HFK {
             }
         }
 
-        let m_range = range_of(ranks.keys().map(|&(i, _)| i));
-        let a_range = range_of(ranks.keys().map(|&(_, j)| j));
+        let m_range = ranks.keys().map(|&(i, _)| i).range().unwrap_or(0..=-1);
+        let a_range = ranks.keys().map(|&(_, j)| j).range().unwrap_or(0..=-1);
         let support = m_range.flat_map(|i| a_range.clone().map(move |j| isize2(i, j)));
 
         let data = Grid2::generate(

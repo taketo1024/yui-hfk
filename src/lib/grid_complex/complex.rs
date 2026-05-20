@@ -5,7 +5,8 @@ use itertools::Itertools;
 use num_traits::{One, Zero};
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
-use yui_homology::{ChainComplex, ChainComplex2, Grid, Homology, Homology2, Summand, isize2, range_of};
+use yui_core::IteratorExt;
+use yui_homology::{ChainComplex, ChainComplex2, Grid, Homology, Homology2, Summand, isize2};
 use yui_core::poly::MultiVar;
 use crate::grid_complex::gc_gen::GCInfGen;
 use crate::grid_diagram::{GridDiagram, GridRect};
@@ -212,9 +213,9 @@ impl<V: GCBigradedType + GCInfType + Send + Sync + 'static> GridComplex<V> {
     pub fn into_complex(self) -> ChainComplex2<GCInfGen, FF2> {
         let a_range = self.gens.alex_deg_range();
         let a_min = *a_range.start();
-        let m_range = range_of(self.gens.support().flat_map(|&(i, j)| 
+        let m_range = self.gens.support().flat_map(|&(i, j)|
             [i - 2 * (j - a_min), i]
-        ));
+        ).range().unwrap_or(0..=-1);
 
         let support: Vec<isize2> = a_range.rev().flat_map(|j|
             m_range.clone().rev().map(move |i| isize2(i, j))
@@ -240,13 +241,13 @@ impl GridComplex<GCFiltered> {
     pub fn into_complex(self, maslov_bound: isize) -> ChainComplex<GCInfGen, FF2> {
         let m_max = *self.gens.maslov_deg_range().end();
         let m_range = maslov_bound ..= m_max;
-        let a_range = range_of(self.gens.support().flat_map(|&(i, j)| { 
-            if i >= maslov_bound { 
+        let a_range = self.gens.support().flat_map(|&(i, j)| {
+            if i >= maslov_bound {
                 vec![j - (i - maslov_bound) / 2, j]
             } else {
                 vec![]
             }
-        }));
+        }).range().unwrap_or(0..=-1);
 
         let this = &self;
         let summands = Grid::generate(m_range.rev(), move |i| {
