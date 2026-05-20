@@ -26,6 +26,7 @@ overflow-checks = true
 ahash = "0.8.12"
 clap = { version = "4.6.1", features = ["derive"] }
 delegate = "0.13.5"
+env_logger = "0.11.5"
 itertools = "0.14.0"
 log = "0.4.29"
 num-integer = "0.1.46"

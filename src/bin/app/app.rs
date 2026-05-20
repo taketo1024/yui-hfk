@@ -64,7 +64,7 @@ impl App {
 
     fn init_logger(&self) {
         let level = self.args.log_level();
-        yui_core::util::log::init_simple_logger(level).unwrap();
+        env_logger::Builder::new().filter_level(level).parse_default_env().init();
     }
 }
 
