@@ -1,6 +1,6 @@
 use std::fmt;
 use yui_core::poly::MultiVar;
-use yui_core::{Elem, lc::LcKey};
+use yui_core::{MathType, lc::LcKey};
 use crate::grid_diagram::{GridDiagram, GridPoint, point::even_points};
 
 #[derive(Clone, Debug, Default)]
@@ -108,7 +108,7 @@ impl fmt::Display for GCGen {
     }
 }
 
-impl Elem for GCGen {
+impl MathType for GCGen {
     fn math_symbol() -> String {
         String::from("GridComplexGen")
     }
@@ -168,7 +168,7 @@ impl fmt::Display for GCInfGen {
     }
 }
 
-impl Elem for GCInfGen {
+impl MathType for GCInfGen {
     fn math_symbol() -> String {
         String::from("GCInfGen")
     }
