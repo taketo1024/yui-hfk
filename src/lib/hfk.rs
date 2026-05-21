@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 use std::ops::{Index, RangeInclusive};
 
-use delegate::delegate;
 use itertools::Itertools;
 use num_integer::binomial;
 use num_traits::Zero;
 use yui_core::IteratorExt;
-use yui_homology::{ToTableString, Grid2, GridTrait, isize2};
+use yui_homology::{Grid2, ToTableString, isize2};
 
 use crate::{GCTilde, GridComplex, GridDiagram};
 
@@ -18,28 +17,27 @@ pub struct HFK {
 impl HFK {
     /// The 3-genus of K, equal to the maximum Alexander degree.
     pub fn genus(&self) -> isize {
-        self.data.support().map(|i| i.1).max().unwrap_or(0)
+        self.data.keys().map(|i| i.1).max().unwrap_or(0)
     }
 
     /// Mirror image: negate both Maslov and Alexander degrees.
     pub fn mirror(&self) -> Self {
-        let support: Vec<isize2> = self.data.support().map(|i| isize2(-i.0, -i.1)).collect();
-        let data = Grid2::generate(support, |i| *self.data.get(isize2(-i.0, -i.1)));
+        let data = self.data.iter()
+            .map(|(&isize2(i, j), &r)| (isize2(-i, -j), r))
+            .collect();
         HFK { data }
     }
 
     pub fn maslov_deg_range(&self) -> RangeInclusive<isize> {
-        self.data.support().map(|x| x.0).range().unwrap_or(0..=-1)
+        self.data.keys().map(|x| x.0).range().unwrap_or(0..=-1)
     }
 
     pub fn alex_deg_range(&self) -> RangeInclusive<isize> {
-        self.data.support().map(|x| x.1).range().unwrap_or(0..=-1)
+        self.data.keys().map(|x| x.1).range().unwrap_or(0..=-1)
     }
 
-    delegate! { 
-        to self.data { 
-            pub fn iter(&self) -> impl Iterator<Item = (isize2, &usize)>;
-        }
+    pub fn iter(&self) -> impl Iterator<Item = (isize2, &usize)> {
+        self.data.iter().map(|(&i, r)| (i, r))
     }
 }
 
@@ -53,7 +51,7 @@ impl From<&GridDiagram> for HFK {
         let support = cx.gens.support().copied().collect_vec();
         let h = cx.into_complex().reduced_generic().homology();
 
-        // collect ranks of GH-tilde. 
+        // collect ranks of GH-tilde.
         let mut ranks: HashMap<(isize, isize), usize> = support.into_iter()
             .filter_map(|(i, j)| {
                 let r = h[(i, j)].rank();
@@ -62,15 +60,15 @@ impl From<&GridDiagram> for HFK {
             .collect();
 
         // divide by W^(n - 1).
-        for j in a_range.clone().rev() { 
-            for i in m_range.clone() { 
+        for j in a_range.clone().rev() {
+            for i in m_range.clone() {
                 let Some(&r) = ranks.get(&(i, j)) else { continue };
                 if r.is_zero() { continue }
 
-                for k in 1 .. n { 
+                for k in 1 .. n {
                     let k = k as isize;
                     if k > j { break }
-                    
+
                     let t = ranks.get_mut(&(i - k, j - k)).unwrap();
                     *t -= r * binomial(n - 1, k as usize);
                 }
@@ -80,23 +78,18 @@ impl From<&GridDiagram> for HFK {
         ranks.retain(|_, r| *r > 0);
 
         // use symmetry: HFK_{i, j}(K) = HFK_{i - 2j, -j}(K)
-        for j in a_range.clone().rev() { 
+        for j in a_range.clone().rev() {
             if j == 0 { break }
 
-            for i in m_range.clone() { 
+            for i in m_range.clone() {
                 let Some(r) = ranks.get(&(i, j)) else { continue };
                 ranks.insert((i - 2 * j, -j), *r);
             }
         }
 
-        let m_range = ranks.keys().map(|&(i, _)| i).range().unwrap_or(0..=-1);
-        let a_range = ranks.keys().map(|&(_, j)| j).range().unwrap_or(0..=-1);
-        let support = m_range.flat_map(|i| a_range.clone().map(move |j| isize2(i, j)));
-
-        let data = Grid2::generate(
-            support,
-            |isize2(i, j)| *ranks.get(&(i, j)).unwrap_or(&0)
-        );
+        let data = ranks.into_iter()
+            .map(|((i, j), r)| (isize2(i, j), r))
+            .collect();
 
         HFK { data }
     }
@@ -104,8 +97,7 @@ impl From<&GridDiagram> for HFK {
 
 impl FromIterator<(isize2, usize)> for HFK {
     fn from_iter<T: IntoIterator<Item = (isize2, usize)>>(iter: T) -> Self {
-        let data = Grid2::from_iter(iter);
-        Self { data }
+        Self { data: iter.into_iter().collect() }
     }
 }
 
@@ -117,18 +109,18 @@ impl Index<(isize, isize)> for HFK {
 }
 
 impl ToTableString<isize> for HFK {
-    fn labels(&self) -> (String, String) { 
+    fn labels(&self) -> (String, String) {
         ("M".to_string(), "A".to_string())
     }
 
-    fn indices(&self) -> (Vec<isize>, Vec<isize>) { 
+    fn indices(&self) -> (Vec<isize>, Vec<isize>) {
         (self.maslov_deg_range().collect(), self.alex_deg_range().collect())
     }
 
-    fn entry_at(&self, i: &isize, j: &isize) -> String { 
-        if self[(*i, *j)].is_zero() { 
+    fn entry_at(&self, i: &isize, j: &isize) -> String {
+        if self[(*i, *j)].is_zero() {
             ".".to_string()
-        } else { 
+        } else {
             self[(*i, *j)].to_string()
         }
     }

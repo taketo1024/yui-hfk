@@ -34,12 +34,13 @@ impl GCInfChainExt for Lc<GCInfGen, FF2> {
     fn mul(&self, u: &MultiVar<'U', usize>) -> Self {
         self.map_ref(|g, r| (GCInfGen::new(&g.u * u, g.x.clone()), *r))
     }
-    
+
     fn support_grid(&self) -> Grid2<usize> {
-        let counts = self.iter()
+        self.iter()
             .filter(|(_, c)| !c.is_zero())
-            .counts_by(|(g, _)| isize2(g.alg_deg(), g.alex_deg()));
-        Grid2::from_iter(counts)
+            .counts_by(|(g, _)| isize2(g.alg_deg(), g.alex_deg()))
+            .into_iter()
+            .collect()
     }
 }
 

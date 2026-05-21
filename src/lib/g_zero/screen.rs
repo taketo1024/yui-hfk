@@ -19,12 +19,11 @@ pub struct Screen {
 
 impl Screen {
     pub fn from_hfk(hfk: &HFK, k: isize) -> Screen {
-        let dict = hfk.iter().flat_map(|(isize2(m, j), &r)| {
+        let data = hfk.iter().filter_map(|(isize2(m, j), &r)| {
             if r.is_zero() || !(m - k).is_even() { return None }
             let a = (m - k) / 2;
             Some((isize2(-a, j - a), r))
-        });
-        let data = Grid2::from_iter(dict);
+        }).collect();
         Screen { data }
     }
 
@@ -35,7 +34,7 @@ impl Screen {
 
     /// Returns true if some element of the screen lies inside the region r.
     pub fn has_element_in(&self, region: &Region) -> bool {
-        self.data.iter().any(|(isize2(i, j), r)| r > &0 && region.contains((i, j)))
+        self.data.iter().any(|(&isize2(i, j), r)| *r > 0 && region.contains((i, j)))
     }
 }
 

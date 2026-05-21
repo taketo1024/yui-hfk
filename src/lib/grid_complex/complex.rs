@@ -6,7 +6,7 @@ use num_traits::{One, Zero};
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
 use yui_core::IteratorExt;
-use yui_homology::{ChainComplex, ChainComplex2, Grid, Homology, Homology2, Summand, isize2};
+use yui_homology::{ChainComplex, ChainComplex2, GrMod, Homology, Homology2, Summand, isize2};
 use yui_core::poly::MultiVar;
 use crate::grid_complex::gc_gen::GCInfGen;
 use crate::grid_diagram::{GridDiagram, GridRect};
@@ -171,7 +171,7 @@ impl GridComplex<GCTilde> {
 
         let this = &self;
         let summands = {
-            Grid::generate(support, move |idx| {
+            GrMod::generate(support, move |idx| {
                 Summand::from_raw_generators(this.raw_gens(idx.0, idx.1).iter().cloned())
             })
         };
@@ -222,7 +222,7 @@ impl<V: GCBigradedType + GCInfType + Send + Sync + 'static> GridComplex<V> {
         ).collect();
 
         let this = &self;
-        let summands = Grid::generate(support, move |idx| {
+        let summands = GrMod::generate(support, move |idx| {
             Summand::from_raw_generators(this.inf_gens(idx.0, idx.1))
         });
 
@@ -250,7 +250,7 @@ impl GridComplex<GCFiltered> {
         }).range().unwrap_or(0..=-1);
 
         let this = &self;
-        let summands = Grid::generate(m_range.rev(), move |i| {
+        let summands = GrMod::generate(m_range.rev(), move |i| {
             let gens = a_range.clone().flat_map(|j| this.inf_gens(i, j));
             Summand::from_raw_generators(gens)
         });
