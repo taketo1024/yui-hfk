@@ -3,7 +3,7 @@ use num_traits::{One, Zero};
 use yui_core::lc::{LcKey, Lc};
 use yui_core::num::FF2;
 use yui_core::poly::MultiVar;
-use yui_homology::{DisplayTable, Summand};
+use yui_homology::{ToTableString, Summand};
 use yui_matrix::MatTrait;
 use yui_matrix::sparse::{SpMat, SpVec};
 use yui_matrix::sparse::pluq::{solve_pluq, solve_pluq_incr};
@@ -66,7 +66,7 @@ impl G0Calc {
     pub fn from_gd(gd: &GridDiagram, g4: Option<usize>, tau: Option<isize>, config: G0CalcConfig) -> Self {
         info!("compute HFK ...");
         let hfk = HFK::from(gd);
-        info!("HFK:\n{}", hfk.display_table());
+        info!("HFK:\n{}", hfk.to_table_string());
 
         let g = hfk.genus() as usize;
         info!("g = {g}");
@@ -85,7 +85,7 @@ impl G0Calc {
         if z.is_zero() { 
             info!("  z = 0.");
         } else {
-            info!("  support of z: \n{}", z.support_grid().display_table());
+            info!("  support of z: \n{}", z.support_grid().to_table_string());
         }
 
         Self::new(gc, g, z, candidates, config)
@@ -310,7 +310,7 @@ impl G0Calc {
     fn find_sol(&self, a: &SpMat<FF2>, y: &SpVec<FF2>) -> Option<SpVec<FF2>> {
         debug!("solve linear system ...");
 
-        let x = if a.nrows() < self.config.chunk {
+        let x = if a.n_rows() < self.config.chunk {
             solve_pluq(a, y)
         } else {
             solve_pluq_incr(a, y, self.config.max_piv, self.config.chunk)

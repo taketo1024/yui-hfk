@@ -6,7 +6,7 @@ use itertools::Itertools;
 use num_integer::binomial;
 use num_traits::Zero;
 use yui_core::IteratorExt;
-use yui_homology::{DisplayTable, Grid2, GridTrait, SummandTrait, isize2};
+use yui_homology::{ToTableString, Grid2, GridTrait, SummandTrait, isize2};
 
 use crate::{GCTilde, GridComplex, GridDiagram};
 
@@ -116,16 +116,16 @@ impl Index<(isize, isize)> for HFK {
     }
 }
 
-impl DisplayTable<isize> for HFK {
-    fn display_labels(&self) -> (String, String) { 
+impl ToTableString<isize> for HFK {
+    fn labels(&self) -> (String, String) { 
         ("M".to_string(), "A".to_string())
     }
 
-    fn display_indices(&self) -> (Vec<isize>, Vec<isize>) { 
+    fn indices(&self) -> (Vec<isize>, Vec<isize>) { 
         (self.maslov_deg_range().collect(), self.alex_deg_range().collect())
     }
 
-    fn display_at(&self, i: &isize, j: &isize) -> String { 
+    fn entry_at(&self, i: &isize, j: &isize) -> String { 
         if self[(*i, *j)].is_zero() { 
             ".".to_string()
         } else { 

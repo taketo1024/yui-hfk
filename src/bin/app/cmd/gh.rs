@@ -1,6 +1,6 @@
 use clap::ValueEnum;
 use yui_hfk::{GridComplex, GCTilde, GCHat, GCMinus};
-use yui_homology::DisplayTable;
+use yui_homology::ToTableString;
 use crate::app::{AppArgs, utils::load_diagram};
 
 #[derive(Clone, Debug, clap::Args)]
@@ -51,17 +51,17 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
         GHType::Tilde => {
             buff.push_str("GH~ (Tilde):\n");
             let h = GridComplex::<GCTilde>::new_filtered(diagram, pred).into_homology();
-            buff.push_str(&h.display_table());
+            buff.push_str(&h.to_table_string());
         }
         GHType::Hat => {
             buff.push_str("GH^ (Hat):\n");
             let h = GridComplex::<GCHat>::new_filtered(diagram, pred).into_homology();
-            buff.push_str(&h.display_table());
+            buff.push_str(&h.to_table_string());
         }
         GHType::Minus => {
             buff.push_str("GH- (Minus):\n");
             let h = GridComplex::<GCMinus>::new_filtered(diagram, pred).into_homology();
-            buff.push_str(&h.display_table());
+            buff.push_str(&h.to_table_string());
         }
     }
 
