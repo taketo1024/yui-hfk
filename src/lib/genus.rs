@@ -1,4 +1,3 @@
-use yui_homology::SummandTrait;
 
 use crate::{GCTilde, GridComplex, GridDiagram};
 

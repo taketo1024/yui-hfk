@@ -6,7 +6,7 @@ use itertools::Itertools;
 use num_integer::binomial;
 use num_traits::Zero;
 use yui_core::IteratorExt;
-use yui_homology::{ToTableString, Grid2, GridTrait, SummandTrait, isize2};
+use yui_homology::{ToTableString, Grid2, GridTrait, isize2};
 
 use crate::{GCTilde, GridComplex, GridDiagram};
 

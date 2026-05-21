@@ -58,7 +58,6 @@ impl GridComplex<GCFiltered> {
 
 #[cfg(test)]
 mod tests {
-    use yui_homology::SummandTrait;
     use super::*;
     use crate::{GridComplex, GridDiagram};
     use super::super::Region;

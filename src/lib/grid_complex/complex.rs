@@ -269,7 +269,6 @@ impl GridComplex<GCFiltered> {
 mod tests {
     use super::*;
     use crate::grid_diagram::GridDiagram;
-    use yui_homology::SummandTrait;
 
     fn unknot_twist() -> GridDiagram { 
         GridDiagram::from_arc_presentation(&[1,2,3,1,2,3])
