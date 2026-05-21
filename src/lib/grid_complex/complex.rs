@@ -6,7 +6,7 @@ use num_traits::{One, Zero};
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
 use yui_core::IteratorExt;
-use yui_homology::{ChainComplex, ChainComplex2, GrMod, Homology, Homology2, Summand, isize2};
+use yui_homology::{ChainComplex1, ChainComplex2, GrMod, GrMod1, GrMod2, Summand, isize2};
 use yui_core::poly::MultiVar;
 use crate::grid_complex::gc_gen::GCInfGen;
 use crate::grid_diagram::{GridDiagram, GridRect};
@@ -181,7 +181,7 @@ impl GridComplex<GCTilde> {
         })
     }
 
-    pub fn into_homology(self) -> Homology2<GCGen, FF2> {
+    pub fn into_homology(self) -> GrMod2<GCGen, FF2> {
         self.into_complex().reduced().homology()
     }
 }
@@ -231,14 +231,14 @@ impl<V: GCBigradedType + GCInfType + Send + Sync + 'static> GridComplex<V> {
         })
     }
 
-    pub fn into_homology(self) -> Homology2<GCInfGen, FF2> {
+    pub fn into_homology(self) -> GrMod2<GCInfGen, FF2> {
         self.into_complex().reduced().homology()
     }
 }
 
 // Implementation for GCFiltered.
 impl GridComplex<GCFiltered> {
-    pub fn into_complex(self, maslov_bound: isize) -> ChainComplex<GCInfGen, FF2> {
+    pub fn into_complex(self, maslov_bound: isize) -> ChainComplex1<GCInfGen, FF2> {
         let m_max = *self.gens.maslov_deg_range().end();
         let m_range = maslov_bound ..= m_max;
         let a_range = self.gens.support().flat_map(|&(i, j)| {
@@ -255,12 +255,12 @@ impl GridComplex<GCFiltered> {
             Summand::from_raw_generators(gens)
         });
 
-        ChainComplex::new(summands, -1, move |_, z| {
+        ChainComplex1::new(summands, -1, move |_, z| {
             self.differentiate(z)
         })
     }
 
-    pub fn into_homology(self, maslov_bound: isize) -> Homology<GCInfGen, FF2> {
+    pub fn into_homology(self, maslov_bound: isize) -> GrMod1<GCInfGen, FF2> {
         self.into_complex(maslov_bound - 2).reduced().homology().truncated(maslov_bound ..= 0)
     }
 }
