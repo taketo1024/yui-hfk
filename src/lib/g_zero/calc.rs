@@ -159,19 +159,17 @@ impl G0Calc {
                 let m = x.maslov_deg;
                 if m < -2 * s { return false; }
 
-                // Consider U^e x such that 
+                // Consider U^a x of total degree e such that
                 //
-                //    M(U^e x) = -2s or -2s + 1.
+                //    M(U^a x) = -2s or -2s + 1.
                 //
-                // Then, 
-                //
-                //   A(U^e x)   = -e + A(x). 
-                //   alg(U^e x) = -e. 
-                //
-                // Check U^e x ∈ R[-s, -s]
+                // Then A(U^a x) = -e + A(x), while alg(U^a x) = -a₀ ranges
+                // over -e ..= 0 as a₀ varies. Since r is down-closed, the
+                // inflation most likely to lie outside is the one with a₀ = 0,
+                // so it suffices to test alg = 0.
 
                 let e = (m + 2 * s) / 2; // >= 0
-                !r.contains((s - e, s - e + x.alex_deg)) // <=> !r.shift(-s, -s).contains(-e, -e + x.alex_deg)
+                !r.contains((s, s - e + x.alex_deg)) // <=> !r.shift(-s, -s).contains(0, -e + x.alex_deg)
             })
         )
     }
