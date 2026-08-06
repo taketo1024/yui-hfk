@@ -267,17 +267,11 @@ impl GridComplex<GCFiltered> {
 
 #[cfg(test)]
 mod tests {
-    use yui_homology::AddInd;
     use super::*;
     use crate::grid_diagram::GridDiagram;
 
     fn unknot_twist() -> GridDiagram {
         GridDiagram::from_arc_presentation(&[1,2,3,1,2,3])
-    }
-
-    fn total_rank<I>(h: &GrMod<I, GCInfGen, FF2>) -> usize
-    where I: AddInd {
-        h.iter().map(|(_, s)| s.rank()).sum()
     }
 
     #[test]
@@ -444,7 +438,7 @@ mod tests {
         let gd = GridDiagram::unknot();
         let h = GridComplex::<GCHat>::new(gd).into_homology();
         assert_eq!(h[(0, 0)].rank(), 1);
-        assert_eq!(total_rank(&h), 1);
+        assert_eq!(h.total_rank(), 1);
     }
 
     #[test]
@@ -452,7 +446,7 @@ mod tests {
         let gd = GridDiagram::from_arc_presentation(&[1,2,3,1,2,3]);
         let h = GridComplex::<GCHat>::new(gd).into_homology();
         assert_eq!(h[(0, 0)].rank(), 1);
-        assert_eq!(total_rank(&h), 1);
+        assert_eq!(h.total_rank(), 1);
     }
 
     #[test]
@@ -462,7 +456,7 @@ mod tests {
         assert_eq!(h[(0, 1)].rank(), 1);
         assert_eq!(h[(-1, 0)].rank(), 1);
         assert_eq!(h[(-2, -1)].rank(), 1);
-        assert_eq!(total_rank(&h), 3);
+        assert_eq!(h.total_rank(), 3);
     }
 
     #[test]
@@ -472,7 +466,7 @@ mod tests {
         assert_eq!(h[(2, 1)].rank(), 1);
         assert_eq!(h[(1, 0)].rank(), 1);
         assert_eq!(h[(0, -1)].rank(), 1);
-        assert_eq!(total_rank(&h), 3);
+        assert_eq!(h.total_rank(), 3);
     }
 
     // -- GCMinus tests --
@@ -483,7 +477,7 @@ mod tests {
         let h = GridComplex::<GCMinus>::new_filtered(gd, |x| x.alex_deg >= -2).into_homology();
         assert_eq!(h[(0, 0)].rank(), 1);
         assert_eq!(h[(-2, -1)].rank(), 1);
-        assert_eq!(total_rank(&h), 2);
+        assert_eq!(h.total_rank(), 2);
     }
 
     #[test]
@@ -493,7 +487,7 @@ mod tests {
         assert_eq!(h[(0, 1)].rank(), 1);
         assert_eq!(h[(-2, -1)].rank(), 1);
         assert_eq!(h[(-4, -2)].rank(), 1);
-        assert_eq!(total_rank(&h), 3);
+        assert_eq!(h.total_rank(), 3);
     }
 
     // -- GCFiltered tests --
@@ -506,7 +500,7 @@ mod tests {
         assert_eq!(gh[0].rank(), 1);
         assert_eq!(gh[-2].rank(), 1);
         assert_eq!(gh[-4].rank(), 1);
-        assert_eq!(total_rank(&gh), 3);
+        assert_eq!(gh.total_rank(), 3);
     }
 
     #[test]
@@ -517,6 +511,6 @@ mod tests {
         assert_eq!(gh[0].rank(), 1);
         assert_eq!(gh[-2].rank(), 1);
         assert_eq!(gh[-4].rank(), 1);
-        assert_eq!(total_rank(&gh), 3);
+        assert_eq!(gh.total_rank(), 3);
     }
 }
