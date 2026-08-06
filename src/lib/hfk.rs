@@ -4,7 +4,7 @@ use std::ops::{Index, RangeInclusive};
 use itertools::Itertools;
 use num_integer::binomial;
 use num_traits::Zero;
-use yui_core::IteratorExt;
+use yui_core::ext::IteratorExt;
 use yui_homology::{Grid2, ToTableString, isize2};
 
 use crate::{GCTilde, GridComplex, GridDiagram};

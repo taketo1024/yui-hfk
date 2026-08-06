@@ -1,6 +1,6 @@
 use std::fmt;
 use yui_core::poly::MultiVar;
-use yui_core::{MathType, lc::LcKey};
+use yui_core::{abst::MathType, lc::LcKey};
 use crate::grid_diagram::{GridDiagram, GridPoint, point::even_points};
 
 #[derive(Clone, Debug, Default)]

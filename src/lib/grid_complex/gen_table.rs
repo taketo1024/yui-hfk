@@ -1,7 +1,7 @@
 use std::ops::{Range, RangeInclusive};
 
 use ahash::AHashMap;
-use yui_core::IteratorExt;
+use yui_core::ext::IteratorExt;
 use crate::grid_diagram::{GridDiagram, GridPoint, GridRect};
 use crate::misc::heap::heap_transpositions;
 use super::gc_gen::GCGen;

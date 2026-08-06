@@ -97,12 +97,12 @@ mod tests {
         // R(0,0) contains (0,0), so the points are empty.
         let pts = cx.complementary_points(0, &Region::simple(0, 0));
         let gen0 = cx.inf_gens_in(0, &pts);
-        assert_eq!(gen0.total_rank(), 0);
+        assert_eq!(gen0.n_generators(), 0);
 
         // R(-1,-1) does not contain (0,0), so we get 1 gen.
         let pts = cx.complementary_points(0, &Region::simple(-1, -1));
         let gen1 = cx.inf_gens_in(0, &pts);
-        assert_eq!(gen1.total_rank(), 1);
+        assert_eq!(gen1.n_generators(), 1);
     }
 
 }
