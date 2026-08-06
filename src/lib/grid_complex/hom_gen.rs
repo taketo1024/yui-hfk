@@ -164,9 +164,117 @@ fn compute_u_coeff(
 
 #[cfg(test)]
 mod tests {
+    use itertools::Itertools;
+
     use super::*;
     use num_traits::Zero;
     use crate::{GridComplex, GridDiagram};
+
+    // All grid diagrams of grid number n, skipping the degenerate ones that put
+    // an O and an X in the same cell.
+    fn all_diagrams(n: u8) -> impl Iterator<Item = GridDiagram> {
+        let perms = (0..n).permutations(n as usize).collect_vec();
+        perms.clone().into_iter().cartesian_product(perms)
+            .filter(|(os, xs)| os.iter().zip(xs).all(|(o, x)| o != x))
+            .map(|(os, xs)| GridDiagram::from_sequences(&os, &xs))
+    }
+
+    // The defining property of hom_gen: it is a cycle. Run exhaustively over
+    // every grid diagram up to size 5 — this is what exercises the pentagons
+    // that wrap around the torus, which the named knots below never produce.
+    #[test]
+    fn test_hom_gen_is_cycle_exhaustive() {
+        for n in 3..=5u8 {
+            let mut count = 0;
+            for gd in all_diagrams(n) {
+                let cx = GridComplex::<GCFiltered>::new(gd);
+                let z = cx.hom_gen();
+
+                assert!(!z.is_zero(), "n = {n}: hom_gen vanished");
+                assert!(cx.differentiate(&z).is_zero(), "n = {n}: d(z) != 0");
+                count += 1;
+            }
+            assert!(count > 0, "n = {n}: no diagrams generated");
+        }
+    }
+
+    #[test]
+    fn test_hom_gen_is_cycle_for_named_knots() {
+        for name in ["0_1", "3_1", "4_1", "5_1", "5_2", "6_1", "6_2", "6_3"] {
+            let gd = GridDiagram::test_data(name).unwrap();
+            let cx = GridComplex::<GCFiltered>::new(gd);
+            let z = cx.hom_gen();
+
+            assert!(!z.is_zero(), "{name}: hom_gen vanished");
+            assert!(cx.differentiate(&z).is_zero(), "{name}: d(z) != 0");
+        }
+    }
+
+    #[test]
+    fn test_hom_gen_is_cycle_for_mirrors() {
+        for name in ["3_1", "4_1", "5_1", "5_2"] {
+            let gd = GridDiagram::test_data(name).unwrap().rotate90();
+            let cx = GridComplex::<GCFiltered>::new(gd);
+            let z = cx.hom_gen();
+
+            assert!(!z.is_zero(), "{name} mirror: hom_gen vanished");
+            assert!(cx.differentiate(&z).is_zero(), "{name} mirror: d(z) != 0");
+        }
+    }
+
+    // hom_gen really does emit monomials that are not powers of U₀ alone, so the
+    // distinction between alg_deg (= -a₀) and the total degree is observable
+    // here. This is the witness that made the algebraic-degree bug visible.
+    #[test]
+    fn test_hom_gen_emits_mixed_monomials() {
+        let cx = GridComplex::<GCFiltered>::new(GridDiagram::figure8());
+        let z = cx.hom_gen();
+
+        let mixed = z.iter().filter(|(g, _)| {
+            g.u.deg_for(0) == 0 && g.u.total_deg() > 0
+        }).count();
+
+        assert!(mixed > 0, "expected a term with no U₀ factor but some Uᵢ factor");
+
+        // Such a term has alg_deg = 0 while -total_deg < 0.
+        assert!(z.iter().any(|(g, _)| g.alg_deg() != -(g.u.total_deg() as isize)));
+    }
+
+    #[test]
+    fn test_swap_u() {
+        let u = MultiVar::<'U', usize>::from([1usize, 2, 3]);
+        let v = swap_u(&u, 0, 2, 3);
+        assert_eq!(v.deg_for(0), 3);
+        assert_eq!(v.deg_for(1), 2);
+        assert_eq!(v.deg_for(2), 1);
+        // swapping twice is the identity
+        assert_eq!(swap_u(&v, 0, 2, 3), u);
+    }
+
+    #[test]
+    fn test_swap_u_fixes_untouched_vars() {
+        let u = MultiVar::<'U', usize>::from([0usize, 5, 0, 7]);
+        let v = swap_u(&u, 0, 2, 4);
+        // U₀ and U₂ are both absent, so the monomial is unchanged
+        assert_eq!(v, u);
+    }
+
+    #[test]
+    fn test_adjacent_transpositions_sorts_random_perms() {
+        for n in 2..=5u8 {
+            for from in (0..n).permutations(n as usize) {
+                for to in (0..n).permutations(n as usize) {
+                    let trans = adjacent_transpositions(&from, &to);
+                    let mut curr = from.clone();
+                    for (i, j) in &trans {
+                        assert_eq!(*j, i + 1, "must be adjacent");
+                        curr.swap(*i, *j);
+                    }
+                    assert_eq!(curr, to);
+                }
+            }
+        }
+    }
 
     #[test]
     fn test_adjacent_transpositions_identity() {

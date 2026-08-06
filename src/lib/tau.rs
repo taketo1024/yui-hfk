@@ -101,6 +101,42 @@ mod tests {
     }
 
     #[test]
+    fn test_5_1() {
+        assert_eq!(tau(&GridDiagram::test_data("5_1").unwrap()), Ok(2));
+    }
+
+    #[test]
+    fn test_5_2() {
+        assert_eq!(tau(&GridDiagram::test_data("5_2").unwrap()), Ok(1));
+    }
+
+    #[test]
+    fn test_6_1() {
+        assert_eq!(tau(&GridDiagram::test_data("6_1").unwrap()), Ok(0));
+    }
+
+    #[test]
+    fn test_6_2() {
+        assert_eq!(tau(&GridDiagram::test_data("6_2").unwrap()), Ok(1));
+    }
+
+    #[test]
+    fn test_6_3() {
+        assert_eq!(tau(&GridDiagram::test_data("6_3").unwrap()), Ok(0));
+    }
+
+    // tau is antisymmetric under mirroring.
+    #[test]
+    fn test_mirror_antisymmetry() {
+        for name in ["3_1", "4_1", "5_1", "5_2", "6_1", "6_2", "6_3"] {
+            let gd = GridDiagram::test_data(name).unwrap();
+            let t = tau(&gd).unwrap();
+            let t_mirror = tau(&gd.rotate90()).unwrap();
+            assert_eq!(t, -t_mirror, "{name}: tau = {t}, mirror = {t_mirror}");
+        }
+    }
+
+    #[test]
     fn test_unknot_mirror() {
         assert_eq!(tau(&GridDiagram::unknot().rotate90()), Ok(0));
     }

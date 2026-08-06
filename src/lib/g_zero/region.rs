@@ -250,6 +250,37 @@ mod tests {
         assert!(!result.coeff(&g_out).is_zero());
     }
 
+    // A term with no U₀ factor sits at alg = 0 however large its other
+    // exponents are. Under the old (total-degree) convention it would have been
+    // pushed to alg = -3 and wrongly counted as inside R(-1, ∞).
+    #[test]
+    fn test_contains_gen_ignores_higher_vars() {
+        let g = make_gen(0, 4, 0, 3, &[0, 3]); // U₁³: alg = 0, alex = 3 - 3 = 0
+
+        assert_eq!(g.alg_deg(), 0);
+        assert_eq!(g.alex_deg(), 0);
+
+        // alg = 0 is outside any region whose corners all have i ≤ -1
+        let r = Region::simple(-1, isize::MAX);
+        assert!(!r.contains_gen(&g));
+
+        // but inside one that reaches alg = 0
+        assert!(Region::simple(0, 0).contains_gen(&g));
+    }
+
+    #[test]
+    fn test_cutoff_keeps_mixed_monomial_outside() {
+        let g_u0 = make_gen(0, 4, 0, 3, &[3]);    // U₀³: alg = -3 → inside
+        let g_u1 = make_gen(1, 4, 0, 3, &[0, 3]); // U₁³: alg =  0 → outside
+        let lc = lc_of(&[g_u0, g_u1.clone()]);
+
+        let r = Region::simple(-1, isize::MAX);
+        let result = r.cutoff(&lc);
+
+        assert_eq!(result.nterms(), 1);
+        assert!(!result.coeff(&g_u1).is_zero());
+    }
+
     #[test]
     fn test_cutoff_all_outside() {
         // U^1 generator: alg = -1, alex = alex_raw - 1

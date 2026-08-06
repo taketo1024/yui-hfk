@@ -118,9 +118,148 @@ fn n_monomials(n: usize, m: usize) -> usize {
 
 #[cfg(test)]
 mod tests {
+    use itertools::Itertools;
+    use yui_core::poly::MultiVar;
+
     use super::*;
     use crate::{GridComplex, GridDiagram};
-    use super::super::Region;
+    use super::super::{Corner, Region};
+
+    // Independent enumeration of every inflated generator of maslov degree k
+    // lying outside r: all raw gens against all monomials, no indexing tricks.
+    // Used to cross-check `complementary_points` + `inf_gens_in`.
+    fn brute_force(cx: &GridComplex<GCFiltered>, k: isize, r: &Region) -> Vec<GCInfGen> {
+        let n = cx.grid_number() as usize;
+        let m_max = *cx.gens.maslov_deg_range().end();
+
+        if m_max < k {
+            return vec![];
+        }
+
+        let e_max = ((m_max - k) / 2) as usize;
+        let mut out: Vec<GCInfGen> = (0..=e_max).flat_map(|e| {
+            cx.gens.iter()
+                .filter(move |x| x.maslov_deg == k + 2 * e as isize)
+                .flat_map(move |x| {
+                    (0..n).combinations_with_replacement(e).map(move |combo| {
+                        let u = MultiVar::from_iter(
+                            (0..n).map(|v| (v, combo.iter().filter(|&&w| w == v).count()))
+                        );
+                        GCInfGen::new(u, x.clone())
+                    })
+                })
+        })
+        .filter(|g| !r.contains_gen(g))
+        .collect();
+
+        out.sort();
+        out
+    }
+
+    fn test_regions() -> Vec<Region> {
+        vec![
+            Region::simple(0, 0),
+            Region::simple(-1, -1),
+            Region::simple(0, 1),
+            Region::simple(-1, 2),
+            Region::new([Corner::new(-1, isize::MAX), Corner::new(0, 0)]),
+            Region::new([Corner::new(-2, 1), Corner::new(0, -1)]),
+        ]
+    }
+
+    fn test_complexes() -> Vec<GridComplex<GCFiltered>> {
+        [GridDiagram::unknot(), GridDiagram::trefoil(), GridDiagram::figure8()]
+            .into_iter()
+            .map(GridComplex::<GCFiltered>::new)
+            .collect()
+    }
+
+    // ---- cross-checks against brute force ----
+
+    #[test]
+    fn test_inf_gens_in_matches_brute_force() {
+        for cx in test_complexes() {
+            let m_range = cx.gens.maslov_deg_range();
+            for k in (*m_range.start() - 2) ..= *m_range.end() {
+                for r in test_regions() {
+                    let pts = cx.complementary_points(k, &r);
+                    let mut actual: Vec<GCInfGen> = cx.inf_gens_in(k, &pts)
+                        .raw_generators().iter().cloned().collect();
+                    actual.sort();
+
+                    assert_eq!(actual, brute_force(&cx, k, &r), "k = {k}, r = {r}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_count_inf_gens_in_matches_inf_gens_in() {
+        for cx in test_complexes() {
+            let m_range = cx.gens.maslov_deg_range();
+            for k in (*m_range.start() - 2) ..= *m_range.end() {
+                for r in test_regions() {
+                    let pts = cx.complementary_points(k, &r);
+                    assert_eq!(
+                        cx.count_inf_gens_in(k, &pts),
+                        cx.inf_gens_in(k, &pts).n_generators(),
+                        "k = {k}, r = {r}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_count_raw_gens_in_matches_raw_gens_in() {
+        for cx in test_complexes() {
+            let m_range = cx.gens.maslov_deg_range();
+            for k in (*m_range.start() - 2) ..= *m_range.end() {
+                for r in test_regions() {
+                    let pts = cx.complementary_points(k, &r);
+                    assert_eq!(
+                        cx.count_raw_gens_in(k, &pts),
+                        cx.raw_gens_in(k, &pts).n_generators(),
+                        "k = {k}, r = {r}"
+                    );
+                }
+            }
+        }
+    }
+
+    // Every generated element must sit at maslov degree k, at one of the
+    // reported points, and outside r.
+    #[test]
+    fn test_inf_gens_in_are_well_placed() {
+        for cx in test_complexes() {
+            let m_range = cx.gens.maslov_deg_range();
+            for k in (*m_range.start() - 2) ..= *m_range.end() {
+                for r in test_regions() {
+                    let pts = cx.complementary_points(k, &r);
+                    for g in cx.inf_gens_in(k, &pts).raw_generators() {
+                        assert_eq!(g.maslov_deg(), k);
+                        assert!(pts.contains(&(g.alg_deg(), g.alex_deg())));
+                        assert!(!r.contains_gen(g));
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_complementary_points_are_outside_region() {
+        for cx in test_complexes() {
+            let m_range = cx.gens.maslov_deg_range();
+            for k in (*m_range.start() - 2) ..= *m_range.end() {
+                for r in test_regions() {
+                    let pts = cx.complementary_points(k, &r);
+                    assert!(pts.iter().all(|&p| !r.contains(p)));
+                    assert!(pts.iter().all(|&(i, _)| i <= 0), "alg degrees are ≤ 0");
+                    assert!(pts.iter().tuple_windows().all(|(a, b)| a < b), "sorted, no dups");
+                }
+            }
+        }
+    }
 
     // ---- complementary_points tests ----
 

@@ -526,4 +526,40 @@ mod tests {
         let rs = accepted(GridDiagram::test_data("5_2").unwrap().rotate90());
         assert_eq!(rs, vec![Region::new([Corner::new(-1, 0), Corner::new(0, -1)])]);
     }
+
+    #[test]
+    fn test_6_1() {
+        let rs = accepted(GridDiagram::test_data("6_1").unwrap());
+        assert_eq!(rs, vec![Region::simple(0, 0)]);
+    }
+
+    #[test]
+    fn test_6_2() {
+        let rs = accepted(GridDiagram::test_data("6_2").unwrap());
+        assert_eq!(rs.len(), 2);
+        assert!(rs.contains(&Region::simple(0, 1)));
+        assert!(rs.contains(&Region::simple(1, 0)));
+    }
+
+    #[test]
+    fn test_6_3() {
+        let rs = accepted(GridDiagram::test_data("6_3").unwrap());
+        assert_eq!(rs, vec![Region::simple(0, 0)]);
+    }
+
+    // G0(K) is closed under the reflection (i, j) ↦ (j, i), which follows from
+    // the symmetry CFK^∞(K) ≃ (CFK^∞(K))^r. See [SS2019] §5.1.
+    #[test]
+    fn test_reflection_symmetry() {
+        for name in ["3_1", "4_1", "5_1", "5_2", "6_1", "6_2", "6_3"] {
+            let gd = GridDiagram::test_data(name).unwrap();
+            let rs = accepted(gd.clone());
+
+            // every accepted region must be non-empty and reflection-closed as a set
+            assert!(!rs.is_empty(), "{name}: no accepted region");
+            for r in &rs {
+                assert!(rs.contains(&r.transposed()), "{name}: {r} has no reflection");
+            }
+        }
+    }
 }
