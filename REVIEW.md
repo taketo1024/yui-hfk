@@ -140,6 +140,26 @@ generator `inf_gens_e_at` in `grid_complex/complex.rs`. The enumeration is now
 driven from the raw bidegrees rather than the raw Alexander range, since
 correct inflated points can fall below that range.
 
+A **second site** carried the same assumption: the generator filter in
+`G0Calc::build_complex` (commit `55fb95d`). It tested the inflation of total
+degree `e` at algebraic degree `−e`; correctly, those inflations span
+`−e ..= 0`, and since regions are down-closed the one most likely to lie
+outside is `a₀ = 0`. The old test therefore *dropped generators it should have
+kept*, which masked the `alg_deg` fix entirely — before this second fix, both
+the generator counts and the linear-system sizes were bit-identical to the
+buggy branch. For `10_145`:
+
+| | before | after |
+|---|---|---|
+| generators (τ path) | 5 338 | 8 767 |
+| generators (𝒢₀ path) | 36 388 | 55 217 |
+| linear system | (20129, 39163) | (205961, 181727) |
+
+Note the filter is vacuous in the algebraic coordinate for *simple* regions
+`R(a, b)` (there `s = a`, so both `s − e ≤ a` and `s ≤ a` hold); only
+multi-corner regions — the ones the τ search and negative-τ knots use — see a
+difference.
+
 ### Direction and observed effect
 
 Since `−Σaᵢ ≤ −a₀` and regions are down-closed, `C_R^{buggy} ⊇ C_R^{correct}`:
@@ -154,13 +174,23 @@ The divergence is real, not theoretical: for the figure-8, `hom_gen` produces a
 term with `a₀ = 0` but `U₁`-degree > 0, which the two conventions place at
 different algebraic degrees.
 
-**However, computed results are unchanged for every knot in the test data.**
-`τ` and `𝒢₀` were computed before and after the fix for
-`3_1, 4_1, 5_1, 5_2, 6_1, 6_2, 6_3` and agree exactly
-(`τ = 1, 0, 2, 1, 0, 1, 0`, all matching known values). The bug needs mixed
-monomials at the critical degrees, which grids this small do not produce.
-Exhibiting a difference requires larger knots — especially ones with rich
-`CFK^∞` such as `8_19` — so a full recomputation is still warranted.
+**However, no computed result has changed so far.** `τ` and `𝒢₀` were computed
+before and after the fix for
+
+- `3_1, 4_1, 5_1, 5_2, 6_1, 6_2, 6_3` (grid number ≤ 8), and
+- `8_19, 8_20, 8_21, 9_42, 10_124, 10_132, 10_139, 10_145, 10_152, 10_154,
+  10_161` (grid number 7–10), which include the `(3,4)`- and `(3,5)`-torus
+  knots and several negative-`τ` and multi-corner cases,
+
+and every value agrees, all matching the known invariants. This is not because
+the fix is inert: after the `build_complex` fix the complexes and linear
+systems are markedly larger (table above). The old code was solving a smaller,
+wrong problem and arriving at the right answer on these knots.
+
+A discriminating example has therefore not yet been found. It would need mixed
+monomials to matter at the critical degrees; grids in this range do not appear
+to produce one, so a full recomputation over the 12-crossing table is still
+warranted.
 
 ### Regression guards
 
