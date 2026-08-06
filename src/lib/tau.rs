@@ -8,7 +8,15 @@ pub fn tau(gd: &GridDiagram) -> Result<isize, G0CalcError> {
     tau_with_config(gd, None, None, G0CalcConfig::default())
 }
 
-pub fn tau_with_config(gd: &GridDiagram, g: Option<usize>, g4: Option<usize>, config: G0CalcConfig) -> Result<isize, G0CalcError> { 
+pub fn tau_with_config(gd: &GridDiagram, g: Option<usize>, g4: Option<usize>, config: G0CalcConfig) -> Result<isize, G0CalcError> {
+    // The search is markedly cheaper on the positive side, and tau(mirror) =
+    // -tau, so start from there. Mirroring negates the writhe, so this recurses
+    // at most once.
+    if gd.writhe() < 0 {
+        info!("negative writhe, switch to mirror.");
+        return tau_with_config(&gd.rotate90(), g, g4, config).map(|t| -t);
+    }
+
     info!("compute tau ...");
 
     let g = g.unwrap_or_else(|| { 

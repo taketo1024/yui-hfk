@@ -115,6 +115,38 @@ pub fn unknot() -> GridDiagram {
         GridDiagram::new(os, xs, size)
     }
 
+    /// The writhe of the knot diagram: the signed count of crossings, where a
+    /// vertical strand (X → O) always passes over a horizontal one (O → X).
+    /// Mirroring negates it, so its sign says which side is the "positive" one.
+    pub fn writhe(&self) -> isize {
+        let n = self.grid_number() as usize;
+        let row = |p: &GridPoint| ((p.y - 1) / 2) as usize;
+
+        let o_row: Vec<usize> = self.os.iter().map(row).collect();
+        let x_row: Vec<usize> = self.xs.iter().map(row).collect();
+
+        // inverse maps: which column holds the O (resp. X) of a given row
+        let mut o_col = vec![0usize; n];
+        let mut x_col = vec![0usize; n];
+        for c in 0..n {
+            o_col[o_row[c]] = c;
+            x_col[x_row[c]] = c;
+        }
+
+        (0..n).map(|c| {
+            let (r0, r1) = sorted(x_row[c], o_row[c]);
+            let v: isize = if o_row[c] > x_row[c] { 1 } else { -1 };
+
+            (r0 + 1..r1).filter(|&r| {
+                let (c0, c1) = sorted(o_col[r], x_col[r]);
+                c0 < c && c < c1
+            }).map(|r| {
+                let h: isize = if x_col[r] > o_col[r] { 1 } else { -1 };
+                -v * h
+            }).sum::<isize>()
+        }).sum()
+    }
+
     // ============ Degree computation (Section 4.1 of arXiv:2002.09210) ============
 
     /// Count pairs (p, q) ∈ x × y where p strictly dominates q.
@@ -152,6 +184,10 @@ pub fn unknot() -> GridDiagram {
         let m_x = Self::maslov_grading(&self.xs, gen_points);
         (m_o - m_x - n + 1) / 2
     }
+}
+
+fn sorted(a: usize, b: usize) -> (usize, usize) {
+    if a <= b { (a, b) } else { (b, a) }
 }
 
 impl std::fmt::Display for GridDiagram {
@@ -280,6 +316,27 @@ mod tests {
 
         // J should be symmetric by definition
         assert_eq!(j12, j21);
+    }
+
+    #[test]
+    fn test_writhe() {
+        // positive torus knots: writhe > 0, matching tau > 0
+        assert_eq!(GridDiagram::trefoil().writhe(), 3);
+        assert_eq!(GridDiagram::test_data("5_1").unwrap().writhe(), 5);
+        // 8_19 = T(3,4), a positive braid closure
+        let k8_19 = GridDiagram::from_sequences(&[3,2,1,0,6,5,4], &[6,5,4,3,2,1,0]);
+        assert_eq!(k8_19.writhe(), 8);
+        // figure-8 is amphichiral
+        assert_eq!(GridDiagram::figure8().writhe(), 0);
+        assert_eq!(GridDiagram::unknot().writhe(), 0);
+    }
+
+    #[test]
+    fn test_writhe_negates_under_mirror() {
+        for name in ["0_1", "3_1", "4_1", "5_1", "5_2", "6_1", "6_2", "6_3"] {
+            let g = GridDiagram::test_data(name).unwrap();
+            assert_eq!(g.rotate90().writhe(), -g.writhe(), "{name}");
+        }
     }
 
     #[test]
