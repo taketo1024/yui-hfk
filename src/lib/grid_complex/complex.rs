@@ -135,8 +135,8 @@ impl<V: GCType> GridComplex<V> {
         let seq = x.sequence();
         let mut tmp = vec![0u8; n as usize];
 
-        (0..n as usize).tuple_combinations()
-            .flat_map(|(i, j)| [(pts[i], pts[j]), (pts[j], pts[i])])
+        (0..n as usize).array_combinations::<2>()
+            .flat_map(|[i, j]| [(pts[i], pts[j]), (pts[j], pts[i])])
             .filter_map(|(p, q)| {
                 let rect = GridRect::between(p, q, grid_size);
                 if rect.intersects(&pts, grid_size, true) { return None; }
