@@ -142,31 +142,34 @@ pub(crate) mod tests {
 
     #[test]
     fn test_alg_degree() {
-        // alg_degree of a term = -(u.total_deg); max = least-negative
-        let g1 = make_gen(0, 2, 0, 0, &[1]);    // -(1) = -1
-        let g2 = make_gen(1, 2, 0, 0, &[0, 3]); // -(3) = -3
-        let g3 = make_gen(2, 2, 0, 0, &[]);     // -(0) = 0
+        // alg_deg of a term = -(exponent of U₀); U₁, U₂, … are ignored.
+        let g1 = make_gen(0, 3, 0, 0, &[1]);       // U₀     → -1
+        let g2 = make_gen(1, 3, 0, 0, &[0, 3]);    // U₁³    →  0
+        let g3 = make_gen(2, 3, 0, 0, &[2, 5]);    // U₀²U₁⁵ → -2
         let lc = lc_of(&[g1, g2, g3]);
         assert_eq!(lc.alg_degree(), 0);
     }
 
     #[test]
     fn test_alg_degree_no_unit() {
-        let g1 = make_gen(0, 2, 0, 0, &[2]);    // -(2) = -2
-        let g2 = make_gen(1, 2, 0, 0, &[0, 1]); // -(1) = -1
+        let g1 = make_gen(0, 2, 0, 0, &[2]);       // U₀²   → -2
+        let g2 = make_gen(1, 2, 0, 0, &[1, 4]);    // U₀U₁⁴ → -1
         let lc = lc_of(&[g1, g2]);
         assert_eq!(lc.alg_degree(), -1);
     }
 
     #[test]
     fn test_support_grid() {
+        // alg uses U₀ only, alex uses the total degree — so g2 and g3 share
+        // an Alexander degree but sit at different algebraic degrees.
         let g1 = make_gen(0, 2, 0, 0, &[]);     // alg=0,  alex=0
         let g2 = make_gen(1, 2, 0, 3, &[1]);    // alg=-1, alex=3-1=2
-        let g3 = make_gen(2, 2, 0, 3, &[0, 1]); // alg=-1, alex=3-1=2 (same bidegree as g2)
+        let g3 = make_gen(2, 2, 0, 3, &[0, 1]); // alg=0,  alex=3-1=2
         let lc = lc_of(&[g1, g2, g3]);
         let g = lc.support_grid();
         assert_eq!(g[(0, 0)], 1);
-        assert_eq!(g[(-1, 2)], 2);
+        assert_eq!(g[(-1, 2)], 1);
+        assert_eq!(g[(0, 2)], 1);
         assert_eq!(g[(0, 1)], 0);
     }
 }

@@ -128,6 +128,33 @@ impl<V: GCType> GridComplex<V> {
             .collect_vec()
     }
 
+    // Generators at (maslov=i, alex=j) with total U-degree e and U₀-exponent
+    // exactly a0, i.e. those of algebraic degree -a0. The remaining degree
+    // e - a0 is distributed over U₁ … U_{n-1}.
+    pub(crate) fn inf_gens_e_at(&self, i: isize, j: isize, e: usize, a0: usize) -> Vec<GCInfGen> {
+        if a0 > e {
+            return vec![];
+        }
+
+        let n = V::nvars(self.grid_number());
+        let m = e - a0;
+
+        self.raw_gens(i + 2 * e as isize, j + e as isize)
+            .iter()
+            .flat_map(move |x| {
+                (1..n).combinations_with_replacement(m).map(move |combo| {
+                    let u = MultiVar::from_iter(
+                        (0..n).map(|k| {
+                            let a = if k == 0 { a0 } else { 0 };
+                            (k, a + combo.iter().filter(|&&v| v == k).count())
+                        })
+                    );
+                    GCInfGen::new(u, x.clone())
+                })
+            })
+            .collect_vec()
+    }
+
     fn differentiate_gen(&self, x: &GCGen) -> Vec<(GCGen, GridRect)> {
         let n = self.grid_number();
         let grid_size = 2 * n;

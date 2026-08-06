@@ -136,11 +136,14 @@ impl GCInfGen {
     }
 
     pub fn alex_deg(&self) -> isize {
-        self.x.alex_deg + self.alg_deg()
+        self.x.alex_deg - self.u.total_deg() as isize
     }
 
+    // note: the algebraic degree counts only U₀, the variable the F[U]-module
+    // structure is defined by. Unlike maslov_deg / alex_deg it is *not* a
+    // function of the total degree — see [SS2019] §5.2.
     pub fn alg_deg(&self) -> isize {
-        -(self.u.total_deg() as isize)
+        -(self.u.deg_for(0) as isize)
     }
 }
 
@@ -225,6 +228,17 @@ mod tests {
         let t = GCInfGen::new(u, x);
         assert_eq!(t.maslov_deg(), 4 - 2 * 3);  // -2
         assert_eq!(t.alex_deg(), 2 - 3);        // -1
+        assert_eq!(t.alg_deg(), -2);            // -a₀, ignoring U₁
+    }
+
+    #[test]
+    fn test_alg_deg_ignores_higher_vars() {
+        let x = GCGen::from_raw(0, 3, 0, 0);
+        // U₁⁵ has no U₀ factor, so alg_deg = 0 while alex_deg = -5.
+        let u = MultiVar::<'U', usize>::from([0usize, 5]);
+        let t = GCInfGen::new(u, x);
+        assert_eq!(t.alg_deg(), 0);
+        assert_eq!(t.alex_deg(), -5);
     }
 
     #[test]

@@ -1,3 +1,5 @@
+use std::ops::RangeInclusive;
+
 use num_integer::binomial;
 use yui_core::num::FF2;
 use yui_homology::Summand;
@@ -5,54 +7,112 @@ use yui_homology::Summand;
 use crate::grid_complex::{GCFiltered, GCGen, GCInfGen, GridComplex};
 use super::Region;
 
+// An inflated generator U^a x has
+//
+//   maslov = M(x) - 2e,   alex = A(x) - e,   alg = -a₀,      e = Σᵢ aᵢ.
+//
+// So alg does *not* determine e: a point (alg, alex) = (i, j) at maslov degree k
+// draws from every total degree e ≥ -i, taking raw gens at (k + 2e, j + e) and
+// monomials with U₀-exponent exactly -i.
 impl GridComplex<GCFiltered> {
     // Returns the (alg_deg, alex_deg) coordinates outside r that can host inf_gens at maslov_deg k.
     pub(crate) fn complementary_points(&self, k: isize, r: &Region) -> Vec<(isize, isize)> {
-        let a_range = self.gens.alex_deg_range();
-        let j_max = *a_range.end();
+        let n = self.grid_number() as usize;
 
-        a_range.flat_map(|j| {
-            let i_min = -(j_max - j); // <= 0
-            (i_min..=0).filter_map(move |i| {
-                (!r.contains((i, j)) && self.gens.has_gen_at(k - 2 * i, j - i))
-                    .then_some((i, j))
+        let mut pts: Vec<(isize, isize)> = self.gens.support()
+            .filter_map(|&(m, a)| {
+                let d = m - k; // = 2e
+                (d >= 0 && d % 2 == 0).then_some((a, d / 2))
             })
-        }).collect()
+            .flat_map(|(a, e)| {
+                let j = a - e;
+                (-e ..= 0).map(move |i| (i, j, e))
+            })
+            .filter(|&(i, j, e)| {
+                n_monomials(n, (e + i) as usize) > 0 && !r.contains((i, j))
+            })
+            .map(|(i, j, _)| (i, j))
+            .collect();
+
+        pts.sort_unstable();
+        pts.dedup();
+        pts
     }
 
-    // Count GCInfGens of maslov_deg = k at the given (alg, alex) points without allocating them. 
+    // Count GCInfGens of maslov_deg = k at the given (alg, alex) points without allocating them.
     pub(crate) fn count_inf_gens_in(&self, k: isize, pts: &[(isize, isize)]) -> usize {
         let n = self.grid_number() as usize;
-        pts.iter().map(|&(i, j)| {
-            let e = (-i) as usize;
-            let n_bases = self.gens.raw_gens(k - 2 * i, j - i).len();
-            let n_multi = binomial(n + e - 1, e);
+        self.contributions(k, pts).map(|(i, j, e)| {
+            let n_bases = self.gens.raw_gens(k + 2 * e, j + e).len();
+            let n_multi = n_monomials(n, (e + i) as usize);
             n_bases * n_multi
         }).sum()
     }
 
     // Collect all GCInfGens of maslov_deg = k at the given (alg, alex) points.
     pub(crate) fn inf_gens_in(&self, k: isize, pts: &[(isize, isize)]) -> Summand<GCInfGen, FF2> {
-        let gens = pts.iter().flat_map(|&(i, j)| {
-            self.inf_gens_e(k, j, (-i) as usize)
+        let gens = self.contributions(k, pts).flat_map(|(i, j, e)| {
+            self.inf_gens_e_at(k, j, e as usize, (-i) as usize)
         });
         Summand::from_raw_generators(gens)
     }
 
     // Count base GCGens at the given points without allocating them.
     pub(crate) fn count_raw_gens_in(&self, k: isize, pts: &[(isize, isize)]) -> usize {
-        pts.iter().map(|&(i, j)| {
-            self.gens.raw_gens(k - 2 * i, j - i).len()
+        self.raw_bidegrees_in(k, pts).into_iter().map(|(m, a)| {
+            self.gens.raw_gens(m, a).len()
         }).sum()
     }
 
     // Collect all base GCGens whose (maslov, alex) corresponds to one of the given
-    // inflated (alg, alex) points at maslov_deg = k. 
+    // inflated (alg, alex) points at maslov_deg = k.
     pub(crate) fn raw_gens_in(&self, k: isize, pts: &[(isize, isize)]) -> Summand<GCGen, FF2> {
-        let gens = pts.iter().flat_map(|&(i, j)| {
-            self.gens.raw_gens(k - 2 * i, j - i).iter().cloned()
+        let gens = self.raw_bidegrees_in(k, pts).into_iter().flat_map(|(m, a)| {
+            self.gens.raw_gens(m, a).iter().cloned()
         });
         Summand::from_raw_generators(gens)
+    }
+
+    // ---- internal ----
+
+    // The (point, total-degree) triples (i, j, e) that carry generators of maslov
+    // degree k. Distinct triples yield disjoint generator sets, since e is itself
+    // a function of the generator.
+    fn contributions<'a>(&'a self, k: isize, pts: &'a [(isize, isize)])
+        -> impl Iterator<Item = (isize, isize, isize)> + 'a
+    {
+        let n = self.grid_number() as usize;
+        pts.iter().flat_map(move |&(i, j)| {
+            self.e_range(k, i)
+                .filter(move |&e| n_monomials(n, (e + i) as usize) > 0)
+                .map(move |e| (i, j, e))
+        })
+    }
+
+    // Total U-degrees that can host a generator of maslov degree k with U₀-exponent -i:
+    // needs e ≥ -i, and a raw gen at maslov k + 2e.
+    fn e_range(&self, k: isize, i: isize) -> RangeInclusive<isize> {
+        let m_max = *self.gens.maslov_deg_range().end();
+        (-i).max(0) ..= (m_max - k).div_euclid(2)
+    }
+
+    // The distinct raw (maslov, alex) bidegrees underlying the inflated generators.
+    fn raw_bidegrees_in(&self, k: isize, pts: &[(isize, isize)]) -> Vec<(isize, isize)> {
+        let mut v: Vec<(isize, isize)> = self.contributions(k, pts)
+            .map(|(_, j, e)| (k + 2 * e, j + e))
+            .collect();
+        v.sort_unstable();
+        v.dedup();
+        v
+    }
+}
+
+// Number of monomials in U₁ … U_{n-1} of total degree m.
+fn n_monomials(n: usize, m: usize) -> usize {
+    if n < 2 {
+        usize::from(m == 0)
+    } else {
+        binomial(n - 2 + m, m)
     }
 }
 
