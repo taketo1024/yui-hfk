@@ -1,7 +1,7 @@
 use std::ops::{Range, RangeInclusive};
 
 use ahash::AHashMap;
-use yui_core::ext::IteratorExt;
+use yui_core::ext::{IteratorExt, empty_range};
 use crate::grid_diagram::{GridDiagram, GridPoint, GridRect};
 use crate::misc::heap::heap_transpositions;
 use super::gc_gen::GCGen;
@@ -99,11 +99,11 @@ impl GCGenSet {
     }
 
     pub fn maslov_deg_range(&self) -> RangeInclusive<isize> {
-        self.dict.keys().map(|&(m, _)| m).range().unwrap_or(0..=-1)
+        self.dict.keys().map(|&(m, _)| m).range().unwrap_or_else(empty_range)
     }
 
     pub fn alex_deg_range(&self) -> RangeInclusive<isize> {
-        self.dict.keys().map(|&(_, a)| a).range().unwrap_or(0..=-1)
+        self.dict.keys().map(|&(_, a)| a).range().unwrap_or_else(empty_range)
     }
 
     pub fn has_gen_at(&self, maslov: isize, alex: isize) -> bool {

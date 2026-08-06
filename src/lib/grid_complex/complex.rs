@@ -5,7 +5,7 @@ use itertools::Itertools;
 use num_traits::{One, Zero};
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
-use yui_core::ext::IteratorExt;
+use yui_core::ext::{IteratorExt, empty_range};
 use yui_homology::{ChainComplex1, ChainComplex2, GrMod, GrMod1, GrMod2, Summand, isize2};
 use yui_core::poly::MultiVar;
 use crate::grid_complex::gc_gen::GCInfGen;
@@ -215,7 +215,7 @@ impl<V: GCBigradedType + GCInfType + Send + Sync + 'static> GridComplex<V> {
         let a_min = *a_range.start();
         let m_range = self.gens.support().flat_map(|&(i, j)|
             [i - 2 * (j - a_min), i]
-        ).range().unwrap_or(0..=-1);
+        ).range().unwrap_or_else(empty_range);
 
         let support: Vec<isize2> = a_range.rev().flat_map(|j|
             m_range.clone().rev().map(move |i| isize2(i, j))
@@ -247,7 +247,7 @@ impl GridComplex<GCFiltered> {
             } else {
                 vec![]
             }
-        }).range().unwrap_or(0..=-1);
+        }).range().unwrap_or_else(empty_range);
 
         let this = &self;
         let summands = GrMod::generate(m_range.rev(), move |i| {

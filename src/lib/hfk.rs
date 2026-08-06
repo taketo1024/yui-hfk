@@ -4,7 +4,7 @@ use std::ops::{Index, RangeInclusive};
 use itertools::Itertools;
 use num_integer::binomial;
 use num_traits::Zero;
-use yui_core::ext::IteratorExt;
+use yui_core::ext::{IteratorExt, empty_range};
 use yui_homology::{Grid2, ToTableString, isize2};
 
 use crate::{GCTilde, GridComplex, GridDiagram};
@@ -29,11 +29,11 @@ impl HFK {
     }
 
     pub fn maslov_deg_range(&self) -> RangeInclusive<isize> {
-        self.data.keys().map(|x| x.0).range().unwrap_or(0..=-1)
+        self.data.keys().map(|x| x.0).range().unwrap_or_else(empty_range)
     }
 
     pub fn alex_deg_range(&self) -> RangeInclusive<isize> {
-        self.data.keys().map(|x| x.1).range().unwrap_or(0..=-1)
+        self.data.keys().map(|x| x.1).range().unwrap_or_else(empty_range)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (isize2, &usize)> {
