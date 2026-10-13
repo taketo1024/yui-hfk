@@ -97,7 +97,8 @@ cargo test --release -- --ignored --nocapture    # slow: G_0 and tau over knots 
 ```
 
 The ignored tests in [`tests/oracle.rs`](https://github.com/taketo1024/yui-hfk/blob/main/lib-hfk/tests/oracle.rs) check `𝒢₀`, `τ` and the genus
-against results from the original Swift implementation, for 47 knots with grid number 7–11.
+against results from the original Swift implementation, for the 44 knots of Table 1 in \[SS\]
+(grid number 7–11).
 Expected values and grid diagrams are inlined, so they need no external data.
 
 ## References
