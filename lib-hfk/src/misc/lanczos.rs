@@ -7,6 +7,8 @@
 //! that nothing was found.
 
 use std::array::from_fn;
+use std::cmp::Ordering;
+use std::iter::once;
 
 use log::debug;
 use num_traits::{One, Zero};
@@ -29,12 +31,11 @@ pub fn find_ng_certificate(a: &SpMat<FF2>, y: &SpVec<FF2>, rounds: usize) -> Opt
     }
 
     // kernel vectors of b = aᵀ (an n × m matrix)
-    let bt = F2Mat::from_entries(m, n, entries_of(a));
-    let b = bt.transpose();
+    let b = F2Mat::from_entries(m, n, entries_of(a)).transpose();
     let y_idx = support(y);
 
     (0..rounds).find_map(|round| {
-        let w = kernel_block(&b, &bt, SEED + round as u64)?;
+        let w = kernel_block(&b, SEED + round as u64)?;
         let hits = y_idx.iter().fold(0, |acc, &i| acc ^ w[i]); // bit c = yᵀw_c
         debug!("lanczos: round {round}, certificates: {}", hits.count_ones());
         (hits != 0).then(|| column(&w, hits.trailing_zeros()))
@@ -53,10 +54,9 @@ pub fn find_solution(a: &SpMat<FF2>, y: &SpVec<FF2>, rounds: usize) -> Option<Sp
     // kernel vectors (x, t) of b = [a | y]; those with t = 1 give a·x = y
     let y_idx = support(y);
     let b = F2Mat::from_entries(m, n + 1, entries_of(a).chain(y_idx.iter().map(|&i| (i, n))));
-    let bt = b.transpose();
 
     (0..rounds).find_map(|round| {
-        let w = kernel_block(&b, &bt, SEED + round as u64)?;
+        let w = kernel_block(&b, SEED + round as u64)?;
         let hits = w[n]; // bit c = last entry of w_c
         debug!("lanczos: round {round}, solutions: {}", hits.count_ones());
         (hits != 0).then(|| column(&w[..n], hits.trailing_zeros()))
@@ -67,7 +67,14 @@ const SEED: u64 = 0x5eed_1a9c_2b3d_4e5f;
 
 /// One run of Block Lanczos on `s = bᵀb`. Returns 64 vectors of `ker b` (some may be
 /// zero) as a block with one `u64` per coordinate, or `None` on a breakdown.
-fn kernel_block(b: &F2Mat, bt: &F2Mat, seed: u64) -> Option<Vec<u64>> {
+fn kernel_block(b0: &F2Mat, seed: u64) -> Option<Vec<u64>> {
+    // note: Lanczos runs on b = q·b0·r for random unit-triangular q, r (see `mix_rows`), so that
+    // repeated rows or columns of b0 do not cancel in bᵀb. Then ker b0 = r·ker b.
+    let qb0 = mix_rows(b0, seed).0;
+    let (bt, partner) = mix_rows(&qb0.transpose(), !seed);
+    let b = &bt.transpose();
+    let bt = &bt;
+
     let n = b.n_cols;
     let s = |v: &[u64]| bt.mul(&b.mul(v));
 
@@ -84,6 +91,7 @@ fn kernel_block(b: &F2Mat, bt: &F2Mat, seed: u64) -> Option<Vec<u64>> {
 
     let max_iter = n / 60 + 100;
     let mut iter = 0;
+    let mut dim = 0; // Σ |S_i|, the dimension of the explored Krylov space
 
     loop {
         if iter > max_iter {
@@ -104,6 +112,7 @@ fn kernel_block(b: &F2Mat, bt: &F2Mat, seed: u64) -> Option<Vec<u64>> {
             debug!("lanczos: column selection failed at iter {iter}, stopping");
             break;
         };
+        dim += mask.count_ones() as usize;
 
         // the coefficients D, E, F of the recurrence (over 𝔽₂, − = +)
         let d = add_id(&mul64(&winv0, &from_fn(|i| (vt_s2v[i] & mask) ^ vt_sv[i])));
@@ -134,10 +143,83 @@ fn kernel_block(b: &F2Mat, bt: &F2Mat, seed: u64) -> Option<Vec<u64>> {
         }
     }
 
-    debug!("lanczos: converged after {iter} iterations");
+    debug!("lanczos: converged after {iter} iterations, explored dimension {dim}");
 
     let z_lo: Vec<u64> = x.iter().zip(&y).map(|(a, b)| a ^ b).collect();
-    combine(b, &z_lo, &v[0])
+    let w = unmix(&combine(b, &z_lo, &v[0])?, &partner);
+
+    // an exact check against b0 (it holds by construction)
+    let bad = b0.mul(&w).iter().fold(0, |acc, r| acc | r);
+    if bad != 0 {
+        debug!("lanczos: {} vectors failed the check against the unmixed matrix", bad.count_ones());
+    }
+    Some(w.iter().map(|r| r & !bad).collect())
+}
+
+/// `q·b` for a random unit upper-triangular `q`: each row `i` gets one random later row
+/// `partner[i]` added. `q` is invertible, so `ker(q·b) = ker b`, and `(q·b)ᵀ(q·b) = bᵀ qᵀq b`
+/// pairs the rows of `b` by a random form, under which repeated rows no longer cancel.
+/// Applied to `bᵀ`, it mixes the columns of `b` instead (see `unmix`).
+fn mix_rows(b: &F2Mat, seed: u64) -> (F2Mat, Vec<Option<usize>>) {
+    let mut rng = SplitMix64(seed ^ MIX_SEED);
+    let m = b.n_rows;
+    let partner: Vec<Option<usize>> = (0..m).map(|i| {
+        (i + 1 < m).then(|| i + 1 + (rng.next() % (m - i - 1) as u64) as usize)
+    }).collect();
+
+    let mix = |i: usize| match partner[i] {
+        Some(j) => xor_sorted(b.row(i), b.row(j)),
+        None => b.row(i).to_vec(),
+    };
+
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "multithread")] {
+            let rows: Vec<Vec<u32>> = (0..m).into_par_iter().map(mix).collect();
+        } else {
+            let rows: Vec<Vec<u32>> = (0..m).map(mix).collect();
+        }
+    }
+
+    (F2Mat::from_rows(b.n_cols, rows), partner)
+}
+
+const MIX_SEED: u64 = 0x6d69_785f_726f_7773;
+
+/// If column `j` of `b·r` is column `j` plus column `partner[j]` of `b`, then
+/// `b·r·w = 0` iff `b·(r·w) = 0`, where `(r·w)[k] = w[k] + Σ { w[j] : partner[j] = k }`.
+fn unmix(w: &[u64], partner: &[Option<usize>]) -> Vec<u64> {
+    let mut u = w.to_vec();
+    for (j, &k) in partner.iter().enumerate() {
+        if let Some(k) = k {
+            u[k] ^= w[j];
+        }
+    }
+    u
+}
+
+/// The symmetric difference of two increasing index lists, i.e. the sum of two 0/1 rows.
+fn xor_sorted(a: &[u32], b: &[u32]) -> Vec<u32> {
+    let mut out = Vec::with_capacity(a.len() + b.len());
+    let (mut i, mut j) = (0, 0);
+    while i < a.len() && j < b.len() {
+        match a[i].cmp(&b[j]) {
+            Ordering::Less => {
+                out.push(a[i]);
+                i += 1;
+            }
+            Ordering::Greater => {
+                out.push(b[j]);
+                j += 1;
+            }
+            Ordering::Equal => {
+                i += 1;
+                j += 1;
+            }
+        }
+    }
+    out.extend_from_slice(&a[i..]);
+    out.extend_from_slice(&b[j..]);
+    out
 }
 
 /// Montgomery's choice of `S_i`: a column mask `S` and `W^inv = S (Sᵀ t S)⁻¹ Sᵀ`, where `S`
@@ -356,6 +438,14 @@ impl F2Mat {
         Self { n_rows, n_cols, row_ptr, col_idx }
     }
 
+    fn from_rows(n_cols: usize, rows: Vec<Vec<u32>>) -> Self {
+        let row_ptr = once(0).chain(rows.iter().scan(0, |acc, r| {
+            *acc += r.len();
+            Some(*acc)
+        })).collect();
+        Self { n_rows: rows.len(), n_cols, row_ptr, col_idx: rows.concat() }
+    }
+
     fn transpose(&self) -> Self {
         let entries = (0..self.n_rows).flat_map(|i| self.row(i).iter().map(move |&j| (j as usize, i)));
         Self::from_entries(self.n_cols, self.n_rows, entries)
@@ -486,6 +576,30 @@ mod tests {
                 let y = rand_vec(&mut rng, m);
                 if solve_pluq(&a, &y).is_none() {
                     assert!(find_solution(&a, &y, 5).is_none());
+                }
+            }
+        }
+    }
+
+    // a = [a0 | a0]: every column appears twice, so a·aᵀ = 0 over 𝔽₂.
+    #[test]
+    fn duplicate_columns() {
+        let mut rng = SplitMix64(5);
+        for (m, n) in SHAPES {
+            for _ in 0..5 {
+                let a0 = rand_mat(&mut rng, (m, n), 0.01);
+                let entries = a0.iter_nz().flat_map(|(i, j, _)| [(i, j, FF2::one()), (i, j + n, FF2::one())]);
+                let a = SpMat::from_entries((m, 2 * n), entries);
+
+                let y = &a * &rand_vec(&mut rng, 2 * n);
+                let x = find_solution(&a, &y, 5).expect("no solution found");
+                assert_eq!(&a * &x, y);
+
+                let y = rand_vec(&mut rng, m);
+                if solve_pluq(&a, &y).is_none() {
+                    let w = find_ng_certificate(&a, &y, 5).expect("no certificate found");
+                    assert!((&a.transpose() * &w).is_zero());
+                    assert_eq!(dot(&y, &w), FF2::one());
                 }
             }
         }
