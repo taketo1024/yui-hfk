@@ -9,6 +9,7 @@ use yui_matrix::sparse::{SpMat, SpVec};
 use yui_matrix::sparse::pluq::{solve_pluq, solve_pluq_incr};
 
 use crate::{GCGen, GridComplex, GridDiagram, HFK};
+use crate::misc::lanczos::find_ng_certificate;
 use crate::grid_complex::{GCFiltered, GCInfGen};
 use crate::grid_complex::chain::GCInfChainExt;
 use super::{Candidates, Region};
@@ -19,6 +20,7 @@ pub struct G0CalcConfig {
     pub filter_gens: bool,
     pub accept_if_unique: bool,
     pub try_fast_ng: bool,
+    pub ng_lanczos: bool,
     pub max_size: usize,
     pub max_piv: usize,
     pub chunk: usize,
@@ -31,6 +33,7 @@ impl Default for G0CalcConfig {
             filter_gens: true,
             accept_if_unique: false,
             try_fast_ng: false,
+            ng_lanczos: false,
             max_size: 1_000_000,
             max_piv: 500_000,
             chunk: 100_000,
@@ -361,7 +364,13 @@ impl G0Calc {
         );
 
         debug!("  specialized: {:?} (nnz = {})", a_c.shape(), a_c.nnz());
-        self.find_sol(&a_c, &y_c).is_some()
+
+        if self.config.ng_lanczos {
+            // note: no certificate only means "not proven NG"
+            find_ng_certificate(&a_c, &y_c, 1).is_none()
+        } else {
+            self.find_sol(&a_c, &y_c).is_some()
+        }
     }
 }
 

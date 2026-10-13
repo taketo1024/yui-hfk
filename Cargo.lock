@@ -1586,6 +1586,7 @@ name = "yui-hfk"
 version = "0.1.0"
 dependencies = [
  "ahash",
+ "cfg-if",
  "delegate",
  "itertools",
  "log",

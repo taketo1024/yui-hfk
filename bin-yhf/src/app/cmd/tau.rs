@@ -32,6 +32,10 @@ pub struct Args {
     #[arg(long)]
     pub try_fast_ng: bool,
 
+    /// In the NG fast-path, use Block Lanczos instead of PLUQ
+    #[arg(long, requires = "try_fast_ng")]
+    pub ng_lanczos: bool,
+
     /// Resign on linear systems whose dimension exceeds this size
     #[arg(long)]
     pub max_size: Option<usize>,
@@ -64,6 +68,7 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
         filter_regions: !args.no_filter_regions,
         filter_gens:    !args.no_filter_gens,
         try_fast_ng:    args.try_fast_ng,
+        ng_lanczos:     args.ng_lanczos,
         max_size:       args.max_size.unwrap_or(defaults.max_size),
         max_piv:        args.max_piv.unwrap_or(defaults.max_piv),
         chunk:          args.chunk.unwrap_or(defaults.chunk),
