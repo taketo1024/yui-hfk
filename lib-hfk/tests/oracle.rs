@@ -16,9 +16,9 @@
 //! 11n34: 9 regions resign with the default config. With `try_fast_ng` and
 //! `max_size = 2_000_000`, the NG fast path rejects `R[(-1,0),(0,-1)]`,
 //! `R[(-2,1),(-1,0),(0,-1)]`, `R[(-1,1),(0,-1)]`, `R[(-2,1),(-1,0),(1,-1)]`,
-//! `R[(-1,1),(1,-1)]` and their transposes (checked region by region with `yhf g0 -R`).
-//! The fast path skips `R[(-2,1),(-1,0),(0,-1),(1,-2)]`, but this region lies in
-//! `R[(-2,1),(-1,0),(1,-1)]`, so it is not realizable either. So 11n34 is fully decided.
+//! `R[(-1,1),(1,-1)]` and their transposes. The fast path skips
+//! `R[(-2,1),(-1,0),(0,-1),(1,-2)]`, but this region lies in `R[(-2,1),(-1,0),(1,-1)]`,
+//! so it is not realizable either. So 11n34 is fully decided (17 min, 7.3 GB peak RSS).
 //!
 //! Cost is governed by the grid number (generator enumeration is O(n!)), so
 //! only the smallest grids run by default. For the rest:
