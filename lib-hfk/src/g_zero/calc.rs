@@ -295,6 +295,7 @@ impl G0Calc {
         if self.config.try_fast_ng {
             let n_raw_w = self.gc.count_raw_gens_in(k + 1, &pts_w);
             let n_raw_z = self.gc.count_raw_gens_in(k, &pts_z);
+            debug!("specialized system size: {:?}", (n_raw_z, n_raw_w));
             let smaller = n_raw_w < n_w || n_raw_z < n_z;
             let tractable = n_raw_w < self.config.max_size && n_raw_z < self.config.max_size;
             if smaller && tractable && !self.pass_specialized(k, &pts_w, &pts_z, &z0, r) {
