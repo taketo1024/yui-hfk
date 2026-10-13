@@ -1,9 +1,4 @@
-//! YUI-HFK: Heegaard Floer Knot Homology in Rust
-//!
-//! A Rust implementation of the grid-based Heegaard Floer knot homology,
-//! ported from the Swift library `swm-hfk`.
-//!
-//! See arXiv:2002.09210 for mathematical background.
+#![doc = include_str!("../../README.md")]
 
 pub mod hfk;
 pub mod genus;

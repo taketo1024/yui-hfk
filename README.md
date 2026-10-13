@@ -1,5 +1,7 @@
 # yui-hfk
 
+[![crates.io](https://img.shields.io/crates/v/yui-hfk.svg)](https://crates.io/crates/yui-hfk)
+[![docs.rs](https://docs.rs/yui-hfk/badge.svg)](https://docs.rs/yui-hfk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 `yui-hfk` computes *Heegaard Floer knot homology* from grid diagrams, written in
@@ -16,7 +18,7 @@ one builds a chain complex whose homology recovers `HFK(K)`, with no analysis in
 - `GH~`, `GH^`, `GH⁻` — the grid homology variants.
 - `g(K)` — the Seifert genus, read off from the top Alexander degree.
 - `τ(K)` — the Ozsváth–Szabó concordance invariant.
-- `𝒢₀(K)` — the concordance invariant of [Sat23], a finite set of closed regions in `ℤ²`
+- `𝒢₀(K)` — the concordance invariant of \[Sat23\], a finite set of closed regions in `ℤ²`
   from which `τ(K)`, `Υ_K` and the `d`-invariants of Dehn surgeries can be read.
 
 ## Usage
@@ -81,7 +83,7 @@ cargo test                                       # unit tests
 cargo test --release -- --ignored --nocapture    # slow: G_0 and tau over knots up to 11 crossings
 ```
 
-The ignored tests in [`tests/oracle.rs`](tests/oracle.rs) check `𝒢₀`, `τ` and the genus
+The ignored tests in [`tests/oracle.rs`](https://github.com/taketo1024/yui-hfk/blob/main/tests/oracle.rs) check `𝒢₀`, `τ` and the genus
 against results from the original Swift implementation, for 47 knots with grid number 7–11.
 Expected values and grid diagrams are inlined, so they need no external data.
 

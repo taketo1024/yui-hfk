@@ -63,8 +63,8 @@ impl GridDiagram {
 
     /// Create from O and X sequences.
     ///
-    /// os_seq[i] is the row index of the O-marking in column i.
-    /// xs_seq[i] is the row index of the X-marking in column i.
+    /// `os[i]` is the row index of the O-marking in column `i`.
+    /// `xs[i]` is the row index of the X-marking in column `i`.
     pub fn from_sequences(os: &[u8], xs: &[u8]) -> Self {
         assert_eq!(os.len(), xs.len());
         let os = odd_points(os);

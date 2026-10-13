@@ -64,7 +64,7 @@ impl PartialOrd for GridPoint {
     }
 }
 
-/// Convert a sequence to even points: (2i, 2*seq[i]).
+/// Convert a sequence to even points: `(2i, 2*seq[i])`.
 pub fn even_points(seq: &[u8]) -> Vec<GridPoint> {
     seq.iter()
         .enumerate()
@@ -72,7 +72,7 @@ pub fn even_points(seq: &[u8]) -> Vec<GridPoint> {
         .collect()
 }
 
-/// Convert a sequence to odd points: (2i+1, 2*seq[i]+1).
+/// Convert a sequence to odd points: `(2i+1, 2*seq[i]+1)`.
 pub fn odd_points(seq: &[u8]) -> Vec<GridPoint> {
     seq.iter()
         .enumerate()

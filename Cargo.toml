@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Taketo Sano <taketo1024@gmail.com>"]
 description = "YUI-HFK: Heegaard Floer Knot Homology"
 license = "MIT"
+repository = "https://github.com/taketo1024/yui-hfk"
 edition = "2024"
 rust-version = "1.88"
 
