@@ -1,5 +1,5 @@
 use yui_hfk::{G0Calc, G0CalcConfig};
-use yui_hfk::g_zero::{Candidates, Region};
+use yui_hfk::g_zero::{Candidates, Mode, Region};
 use crate::app::{AppArgs, utils::load_diagram};
 
 #[derive(Clone, Debug, clap::Args)]
@@ -43,9 +43,9 @@ pub struct Args {
     #[arg(long)]
     pub try_fast_ng: bool,
 
-    /// In the NG fast-path, use Block Lanczos instead of PLUQ
-    #[arg(long, requires = "try_fast_ng")]
-    pub ng_lanczos: bool,
+    /// Solver for the linear systems: lanczos or pluq
+    #[arg(long, default_value = "lanczos")]
+    pub mode: Mode,
 
     /// Resign on linear systems whose dimension exceeds this size
     #[arg(long)]
@@ -80,7 +80,7 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
         filter_gens:    !args.no_filter_gens,
         accept_if_unique: !args.no_accept_if_unique,
         try_fast_ng:    args.try_fast_ng,
-        ng_lanczos:     args.ng_lanczos,
+        mode:           args.mode,
         max_size:       args.max_size.unwrap_or(defaults.max_size),
         max_piv:        args.max_piv.unwrap_or(defaults.max_piv),
         chunk:          args.chunk.unwrap_or(defaults.chunk),

@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use log::*;
 use num_traits::{One, Zero};
 use yui_core::lc::{LcKey, Lc};
@@ -9,7 +11,7 @@ use yui_matrix::sparse::{SpMat, SpVec};
 use yui_matrix::sparse::pluq::{solve_pluq, solve_pluq_incr};
 
 use crate::{GCGen, GridComplex, GridDiagram, HFK};
-use crate::misc::lanczos::find_ng_certificate;
+use crate::misc::lanczos::{find_ng_certificate, find_solution};
 use crate::grid_complex::{GCFiltered, GCInfGen};
 use crate::grid_complex::chain::GCInfChainExt;
 use super::{Candidates, Region};
@@ -20,7 +22,7 @@ pub struct G0CalcConfig {
     pub filter_gens: bool,
     pub accept_if_unique: bool,
     pub try_fast_ng: bool,
-    pub ng_lanczos: bool,
+    pub mode: Mode,
     pub max_size: usize,
     pub max_piv: usize,
     pub chunk: usize,
@@ -33,13 +35,38 @@ impl Default for G0CalcConfig {
             filter_gens: true,
             accept_if_unique: false,
             try_fast_ng: false,
-            ng_lanczos: false,
+            mode: Mode::default(),
             max_size: 1_000_000,
             max_piv: 500_000,
             chunk: 100_000,
         }
     }
 }
+
+/// The solver for the linear systems over `𝔽₂`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Mode {
+    /// Block Lanczos: small memory, randomized but with checked answers.
+    #[default]
+    Lanczos,
+    /// (incremental) PLUQ: deterministic, but may fill in on large systems.
+    Pluq,
+}
+
+impl FromStr for Mode {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "lanczos" => Ok(Mode::Lanczos),
+            "pluq" => Ok(Mode::Pluq),
+            _ => Err(format!("unknown mode `{s}` (expected `lanczos` or `pluq`)")),
+        }
+    }
+}
+
+// note: one Lanczos run almost surely finds a certificate or a solution when one exists.
+const LANCZOS_ROUNDS: usize = 1;
 
 /// Returned by `find_homologous` when the system exceeds `max_size` and
 /// neither the trivial cycle-membership check nor the U-specialization
@@ -264,8 +291,8 @@ impl G0Calc {
 
         debug!("linear system size: {:?}", (n_z, n_w));
 
-        // try NG fast-path for large system
-        if self.config.try_fast_ng && (n_w >= self.config.chunk || n_z >= self.config.chunk) {
+        // try the NG fast-path
+        if self.config.try_fast_ng {
             let n_raw_w = self.gc.count_raw_gens_in(k + 1, &pts_w);
             let n_raw_z = self.gc.count_raw_gens_in(k, &pts_z);
             let smaller = n_raw_w < n_w || n_raw_z < n_z;
@@ -292,7 +319,7 @@ impl G0Calc {
         );
         debug!("  a: {:?} (nnz: {})", a.shape(), a.nnz());
 
-        let Some(x_sol) = self.find_sol(&a, &y) else {
+        let Some(x_sol) = self.find_sol(&a, &y)? else {
             return Ok(None);
         };
         let w = gen_w.devectorize(&x_sol);
@@ -303,20 +330,36 @@ impl G0Calc {
         Ok(Some(z1))
     }
 
-    fn find_sol(&self, a: &SpMat<FF2>, y: &SpVec<FF2>) -> Option<SpVec<FF2>> {
+    /// `Ok(Some(x))`: a solution of `a·x = y`, `Ok(None)`: proven unsolvable,
+    /// `Err(Resigned)`: undecided (Lanczos found neither a certificate nor a solution).
+    fn find_sol(&self, a: &SpMat<FF2>, y: &SpVec<FF2>) -> Result<Option<SpVec<FF2>>, G0CalcError> {
         debug!("solve linear system ...");
 
-        let x = if a.n_rows() < self.config.chunk {
-            solve_pluq(a, y)
-        } else {
-            solve_pluq_incr(a, y, self.config.max_piv, self.config.chunk)
-        }?;
+        let x = match self.config.mode {
+            Mode::Lanczos => {
+                if find_ng_certificate(a, y, LANCZOS_ROUNDS).is_some() {
+                    return Ok(None);
+                }
+                find_solution(a, y, LANCZOS_ROUNDS).ok_or(G0CalcError::Resigned)?
+            }
+            Mode::Pluq => {
+                let x = if a.n_rows() < self.config.chunk {
+                    solve_pluq(a, y)
+                } else {
+                    solve_pluq_incr(a, y, self.config.max_piv, self.config.chunk)
+                };
+                let Some(x) = x else {
+                    return Ok(None);
+                };
+                x
+            }
+        };
 
         debug!("validate solution..");
         assert_eq!(&(a * &x), y);
         debug!("  ok.");
 
-        Some(x)
+        Ok(Some(x))
     }
 
     fn pass_specialized(
@@ -333,7 +376,7 @@ impl G0Calc {
         let raw_gen_w = self.gc.raw_gens_in(k + 1, pts_w);
         let raw_gen_z = self.gc.raw_gens_in(k, pts_z);
 
-        if !self.has_sol_specialed(&raw_gen_w, &raw_gen_z, z0, r, &vec![FF2::one(); n]) {
+        if self.no_sol_specialized(&raw_gen_w, &raw_gen_z, z0, r, &vec![FF2::one(); n]) {
             debug!("  NG via U = 1");
             return false;
         }
@@ -342,7 +385,7 @@ impl G0Calc {
         true
     }
 
-    fn has_sol_specialed(
+    fn no_sol_specialized(
         &self,
         raw_gen_w: &Summand<GCGen, FF2>,
         raw_gen_z: &Summand<GCGen, FF2>,
@@ -365,11 +408,10 @@ impl G0Calc {
 
         debug!("  specialized: {:?} (nnz = {})", a_c.shape(), a_c.nnz());
 
-        if self.config.ng_lanczos {
-            // note: no certificate only means "not proven NG"
-            find_ng_certificate(&a_c, &y_c, 1).is_none()
-        } else {
-            self.find_sol(&a_c, &y_c).is_some()
+        // note: only "proven unsolvable" matters here, so Lanczos skips the search for a solution.
+        match self.config.mode {
+            Mode::Lanczos => find_ng_certificate(&a_c, &y_c, LANCZOS_ROUNDS).is_some(),
+            Mode::Pluq => matches!(self.find_sol(&a_c, &y_c), Ok(None)),
         }
     }
 }
