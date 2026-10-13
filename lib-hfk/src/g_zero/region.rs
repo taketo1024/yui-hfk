@@ -1,4 +1,5 @@
 use std::fmt;
+use std::str::FromStr;
 use num_traits::Zero;
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
@@ -187,6 +188,19 @@ impl fmt::Display for Region {
     }
 }
 
+/// Parses the `Display` format, e.g. `R(1, 1)` or `R[(0, 1), (1, 0)]`. The leading `R` is optional.
+impl FromStr for Region {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let json = s.trim().trim_start_matches('R').replace('(', "[").replace(')', "]");
+        let corners: Vec<[isize; 2]> = serde_json::from_str(&json)
+            .or_else(|_| serde_json::from_str::<[isize; 2]>(&json).map(|c| vec![c]))
+            .map_err(|_| format!("invalid region: {s}"))?;
+        Ok(Region::new(corners.into_iter().map(|[i, j]| Corner::new(i, j))))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::grid_complex::chain::tests::{lc_of, make_gen};
@@ -214,6 +228,20 @@ mod tests {
         let r2 = Region::simple(2, 3);
         assert!(r2.includes(&r1));
         assert!(!r1.includes(&r2));
+    }
+
+    #[test]
+    fn test_region_from_str() {
+        let r1 = Region::simple(1, 1);
+        let r2 = Region::new([Corner::new(0, 1), Corner::new(1, 0)]);
+
+        assert_eq!(r1.to_string().parse::<Region>(), Ok(r1.clone()));
+        assert_eq!(r2.to_string().parse::<Region>(), Ok(r2.clone()));
+        assert_eq!("(1,1)".parse::<Region>(), Ok(r1));
+        assert_eq!("[(0, 1), (1, 0)]".parse::<Region>(), Ok(r2));
+        assert_eq!("R[(-2, 1), (-1, 0), (1, -1)]".parse::<Region>().map(|r| r.corners().len()), Ok(3));
+        assert!("(1, 1, 1)".parse::<Region>().is_err());
+        assert!("foo".parse::<Region>().is_err());
     }
 
     #[test]

@@ -1,4 +1,5 @@
 use yui_hfk::{G0Calc, G0CalcConfig};
+use yui_hfk::g_zero::{Candidates, Region};
 use crate::app::{AppArgs, utils::load_diagram};
 
 #[derive(Clone, Debug, clap::Args)]
@@ -21,6 +22,10 @@ pub struct Args {
     /// Filter candidates using a known value of the tau invariant
     #[arg(short, long)]
     pub tau: Option<isize>,
+
+    /// Test only this region, e.g. "[(0, 1), (1, 0)]"
+    #[arg(short='R', long, conflicts_with_all = ["g", "g4", "tau"])]
+    pub region: Option<Region>,
 
     /// Skip HFK-based region filtering
     #[arg(long)]
@@ -76,15 +81,22 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
         chunk:          args.chunk.unwrap_or(defaults.chunk),
     };
 
-    let mut calc = G0Calc::from_gd(&gd, args.g4, args.tau, config);
-
-    if let Some(g) = args.g {
-        assert_eq!(g, calc.genus(), "expected genus g = {g}, but computed g = {}.", calc.genus());
-    }
+    let mut calc = match &args.region {
+        Some(r) => {
+            let mut candidates = Candidates::new();
+            candidates.add(r.clone());
+            G0Calc::init_with_candidates(&gd, candidates, config)
+        }
+        None => G0Calc::init(&gd, args.g, args.g4, args.tau, config),
+    };
 
     calc.run();
 
-    let format_lines = |rs: &[yui_hfk::g_zero::Region]| -> String {
+    if let Some(r) = &args.region {
+        return Ok(format!("{r}: {}", region_status(&calc, r)));
+    }
+
+    let format_lines = |rs: &[Region]| -> String {
         rs.iter().map(|r| format!("  {r}")).collect::<Vec<_>>().join("\n")
     };
 
@@ -99,6 +111,17 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
     };
 
     Ok(result)
+}
+
+// note: a rejected region is dropped without a record, so "neither accepted nor resigned" means NG.
+fn region_status(calc: &G0Calc, r: &Region) -> &'static str {
+    if calc.accepted().contains(r) {
+        "OK"
+    } else if calc.resigned().contains(r) {
+        "RESIGN"
+    } else {
+        "NG"
+    }
 }
 
 fn validate(args: &Args) { 

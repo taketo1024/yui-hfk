@@ -46,35 +46,28 @@ pub enum G0CalcError { Resigned }
 
 pub struct G0Calc {
     gc: GridComplex<GCFiltered>,
-    g: usize,
     z: Lc<GCInfGen, FF2>,
     candidates: Candidates,
     config: G0CalcConfig
 }
 
 impl G0Calc {
-    pub(crate) fn new(
-        gc: GridComplex<GCFiltered>,
-        g: usize,
-        z: Lc<GCInfGen, FF2>,
-        candidates: Candidates,
-        config: G0CalcConfig,
-    ) -> Self {
-        G0Calc { gc, g, z, candidates, config }
-    }
-
-    pub fn from_gd(gd: &GridDiagram, g4: Option<usize>, tau: Option<isize>, config: G0CalcConfig) -> Self {
+    /// `g`, `g4` and `tau` are known values, if any: `g` is checked against HFK,
+    /// and `g4`, `tau` are used to filter the candidates.
+    pub fn init(gd: &GridDiagram, g: Option<usize>, g4: Option<usize>, tau: Option<isize>, config: G0CalcConfig) -> Self {
         info!("compute HFK ...");
         let hfk = HFK::from(gd);
         info!("HFK:\n{}", hfk.to_table_string());
-
-        let g = hfk.genus() as usize;
-        info!("g = {g}");
+        info!("g = {}", hfk.genus());
 
         Self::validate(&hfk, g, g4, tau);
 
         let candidates = Self::make_candidates(&hfk, g4, tau, config);
+        Self::init_with_candidates(gd, candidates, config)
+    }
 
+    /// Tests only the given candidates, in the given order.
+    pub fn init_with_candidates(gd: &GridDiagram, candidates: Candidates, config: G0CalcConfig) -> Self {
         info!("prepare generators ...");
         let gc = Self::build_complex(gd, &candidates, config.filter_gens);
         info!("  #generators: {}", gc.gens.len());
@@ -88,10 +81,16 @@ impl G0Calc {
             info!("  support of z: \n{}", z.support_grid().to_table_string());
         }
 
-        Self::new(gc, g, z, candidates, config)
+        G0Calc { gc, z, candidates, config }
     }
 
-    fn validate(hfk: &HFK, g: usize, g4: Option<usize>, tau: Option<isize>) { 
+    fn validate(hfk: &HFK, g: Option<usize>, g4: Option<usize>, tau: Option<isize>) {
+        let genus = hfk.genus() as usize;
+
+        if let Some(g) = g {
+            assert_eq!(g, genus, "expected genus g = {g}, but computed g = {genus}.");
+        }
+
         // MEMO: replace with if-let chain
         if let Some(g4) = g4 && let Some(tau) = tau { 
             let t_abs = tau.unsigned_abs();
@@ -99,7 +98,7 @@ impl G0Calc {
         }
         
         if let Some(g4) = g4 { 
-            assert!(g4 <= g, "Invalid inequality: g4 = {g4} > g = {g}");
+            assert!(g4 <= genus, "Invalid inequality: g4 = {g4} > g = {genus}");
         }
 
         if let Some(tau) = tau { 
@@ -149,7 +148,7 @@ impl G0Calc {
         candidates
     }
 
-    pub(crate) fn build_complex(gd: &GridDiagram, candidates: &Candidates, filter_gens: bool) -> GridComplex<GCFiltered> {
+    fn build_complex(gd: &GridDiagram, candidates: &Candidates, filter_gens: bool) -> GridComplex<GCFiltered> {
         let gd = gd.clone();
         if !filter_gens { return GridComplex::new(gd); }
 
@@ -176,10 +175,6 @@ impl G0Calc {
 
     pub fn complex(&self) -> &GridComplex<GCFiltered> {
         &self.gc
-    }
-
-    pub fn genus(&self) -> usize {
-        self.g
     }
 
     /// Processes all remaining candidates and populates `candidates.accepted`.
@@ -407,7 +402,7 @@ mod tests {
         // with w = 0, and the function returns z unchanged.
         let gd = GridDiagram::unknot();
         let cfg = config();
-        let calc = G0Calc::from_gd(&gd, None, None, cfg);
+        let calc = G0Calc::init(&gd, None, None, None, cfg);
 
         let z = &calc.z;
         assert!(!z.is_zero());
@@ -424,7 +419,7 @@ mod tests {
         // R[(-1,0), (0,-1)] lies strictly below the hom_gen at (0,0).
         let gd = GridDiagram::unknot();
         let cfg = config();
-        let calc = G0Calc::from_gd(&gd, None, None, cfg);
+        let calc = G0Calc::init(&gd, None, None, None, cfg);
         let z = &calc.z;
 
         assert!(!z.is_zero());
@@ -439,7 +434,7 @@ mod tests {
         // find_homologous should return Some(z1) where z1 is a cycle inside R(0,1).
         let gd = GridDiagram::trefoil();
         let cfg = config();
-        let calc = G0Calc::from_gd(&gd, None, None, cfg);
+        let calc = G0Calc::init(&gd, None, None, None, cfg);
         let z = &calc.z;
         assert!(!z.is_zero());
 
@@ -452,7 +447,7 @@ mod tests {
 
     fn accepted(gd: GridDiagram) -> Vec<Region> {
         let cfg = config();
-        let mut calc = G0Calc::from_gd(&gd, None, None, cfg);
+        let mut calc = G0Calc::init(&gd, None, None, None, cfg);
         calc.run();
 
         let mut rs = calc.accepted().to_vec();

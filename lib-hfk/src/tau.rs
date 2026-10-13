@@ -59,14 +59,7 @@ fn compute_tau(gd: &GridDiagram, g: usize, g4: Option<usize>, config: G0CalcConf
         candidates.add(r);
     }
 
-    info!("prepare generators ...");
-    let gc = G0Calc::build_complex(gd, &candidates, true);
-    info!("  #generators: {}", gc.gens.len());
-
-    info!("compute homological generator");
-    let z = gc.hom_gen();
-    let mut calc = G0Calc::new(gc, g, z, candidates, config);
-
+    let mut calc = G0Calc::init_with_candidates(gd, candidates, config);
     calc.run();
 
     if !calc.resigned().is_empty() { 

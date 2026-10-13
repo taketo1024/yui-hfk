@@ -59,14 +59,12 @@ fn regions_of(rs: &[Region]) -> Regions {
 /// undecided regions are tolerated. What must hold is that nothing spurious
 /// was accepted and nothing real was rejected.
 fn check(k: &K) -> usize {
-    let mut calc = G0Calc::from_gd(&k.diagram(), None, None, G0CalcConfig::default());
+    let mut calc = G0Calc::init(&k.diagram(), Some(k.genus), None, None, G0CalcConfig::default());
     calc.run();
 
     let accepted = regions_of(calc.accepted());
     let resigned = regions_of(calc.resigned());
     let expected = k.expected();
-
-    assert_eq!(calc.genus(), k.genus, "{}: genus", k.name);
 
     let spurious: Vec<_> = accepted.difference(&expected).collect();
     assert!(spurious.is_empty(), "{}: accepted non-realizable {spurious:?}", k.name);
