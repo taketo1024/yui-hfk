@@ -2,9 +2,10 @@ use std::ops::RangeInclusive;
 
 use num_integer::binomial;
 use yui_core::num::FF2;
+use yui_core::poly::MultiVar;
 use yui_homology::Summand;
 
-use crate::grid_complex::{GCFiltered, GCGen, GCInfGen, GridComplex};
+use crate::grid_complex::{GCFiltered, GCInfGen, GridComplex};
 use super::Region;
 
 // An inflated generator U^a x has
@@ -57,18 +58,21 @@ impl GridComplex<GCFiltered> {
         Summand::from_raw_generators(gens)
     }
 
-    // Count base GCGens at the given points without allocating them.
-    pub(crate) fn count_raw_gens_in(&self, k: isize, pts: &[(isize, isize)]) -> usize {
-        self.raw_bidegrees_in(k, pts).into_iter().map(|(m, a)| {
-            self.gens.raw_gens(m, a).len()
+    // Count the images of inf_gens_in(k, pts) under `project`, without allocating them.
+    pub(crate) fn count_proj_gens_in(&self, k: isize, pts: &[(isize, isize)]) -> usize {
+        self.contributions(k, pts).map(|(_, j, e)| {
+            self.gens.raw_gens(k + 2 * e, j + e).len()
         }).sum()
     }
 
-    // Collect all base GCGens whose (maslov, alex) corresponds to one of the given
-    // inflated (alg, alex) points at maslov_deg = k.
-    pub(crate) fn raw_gens_in(&self, k: isize, pts: &[(isize, isize)]) -> Summand<GCGen, FF2> {
-        let gens = self.raw_bidegrees_in(k, pts).into_iter().flat_map(|(m, a)| {
-            self.gens.raw_gens(m, a).iter().cloned()
+    // The images of inf_gens_in(k, pts) under `project`: U₀^a U₁^(e-a) x with a = -i,
+    // one for each raw gen x of each contribution (i, j, e).
+    pub(crate) fn proj_gens_in(&self, k: isize, pts: &[(isize, isize)]) -> Summand<GCInfGen, FF2> {
+        let gens = self.contributions(k, pts).flat_map(|(i, j, e)| {
+            let u = proj_monomial((-i) as usize, (e + i) as usize);
+            self.gens.raw_gens(k + 2 * e, j + e).iter().map(move |x| {
+                GCInfGen::new(u.clone(), x.clone())
+            })
         });
         Summand::from_raw_generators(gens)
     }
@@ -95,16 +99,6 @@ impl GridComplex<GCFiltered> {
         let m_max = *self.gens.maslov_deg_range().end();
         (-i).max(0) ..= (m_max - k).div_euclid(2)
     }
-
-    // The distinct raw (maslov, alex) bidegrees underlying the inflated generators.
-    fn raw_bidegrees_in(&self, k: isize, pts: &[(isize, isize)]) -> Vec<(isize, isize)> {
-        let mut v: Vec<(isize, isize)> = self.contributions(k, pts)
-            .map(|(_, j, e)| (k + 2 * e, j + e))
-            .collect();
-        v.sort_unstable();
-        v.dedup();
-        v
-    }
 }
 
 // Number of monomials in U₁ … U_{n-1} of total degree m.
@@ -116,9 +110,21 @@ fn n_monomials(n: usize, m: usize) -> usize {
     }
 }
 
+// The image under π: U₀ ↦ U₀, Uᵢ ↦ U₁ (i ≥ 1). π keeps (alg_deg, alex_deg), so it
+// commutes with Region::cutoff, and NG for the projected system implies NG ([SS] §5).
+pub(crate) fn project(g: &GCInfGen) -> GCInfGen {
+    let a0 = g.u.deg_for(0);
+    GCInfGen::new(proj_monomial(a0, g.u.total_deg() - a0), g.x.clone())
+}
+
+fn proj_monomial(a0: usize, a1: usize) -> MultiVar<'U', usize> {
+    MultiVar::from_iter([(0, a0), (1, a1)])
+}
+
 #[cfg(test)]
 mod tests {
     use itertools::Itertools;
+    use yui_core::lc::Lc;
     use yui_core::poly::MultiVar;
 
     use super::*;
@@ -211,17 +217,58 @@ mod tests {
     }
 
     #[test]
-    fn test_count_raw_gens_in_matches_raw_gens_in() {
+    fn test_count_proj_gens_in_matches_proj_gens_in() {
         for cx in test_complexes() {
             let m_range = cx.gens.maslov_deg_range();
             for k in (*m_range.start() - 2) ..= *m_range.end() {
                 for r in test_regions() {
                     let pts = cx.complementary_points(k, &r);
                     assert_eq!(
-                        cx.count_raw_gens_in(k, &pts),
-                        cx.raw_gens_in(k, &pts).n_generators(),
+                        cx.count_proj_gens_in(k, &pts),
+                        cx.proj_gens_in(k, &pts).n_generators(),
                         "k = {k}, r = {r}"
                     );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_proj_gens_in_are_projections_of_inf_gens_in() {
+        for cx in test_complexes() {
+            let m_range = cx.gens.maslov_deg_range();
+            for k in (*m_range.start() - 2) ..= *m_range.end() {
+                for r in test_regions() {
+                    let pts = cx.complementary_points(k, &r);
+                    let mut actual: Vec<GCInfGen> = cx.proj_gens_in(k, &pts)
+                        .raw_generators().iter().cloned().collect();
+                    actual.sort();
+
+                    let mut expected: Vec<GCInfGen> = cx.inf_gens_in(k, &pts)
+                        .raw_generators().iter().map(project).collect();
+                    expected.sort();
+                    expected.dedup();
+
+                    assert_eq!(actual, expected, "k = {k}, r = {r}");
+                }
+            }
+        }
+    }
+
+    // The soundness of the NG fast path: π ∘ cutoff ∘ ∂ factors through π.
+    #[test]
+    fn test_project_commutes_with_cutoff_differential() {
+        let proj = |z: &Lc<GCInfGen, FF2>| z.apply(|g| Lc::from(project(g)));
+        for cx in test_complexes() {
+            let m_range = cx.gens.maslov_deg_range();
+            for k in (*m_range.start() - 2) ..= *m_range.end() {
+                for r in test_regions() {
+                    let pts = cx.complementary_points(k, &r);
+                    for g in cx.inf_gens_in(k, &pts).raw_generators() {
+                        let dg = r.cutoff(&cx.differentiate(&Lc::from(g.clone())));
+                        let dpg = r.cutoff(&cx.differentiate(&Lc::from(project(g))));
+                        assert_eq!(proj(&dg), proj(&dpg), "g = {g}, r = {r}");
+                    }
                 }
             }
         }

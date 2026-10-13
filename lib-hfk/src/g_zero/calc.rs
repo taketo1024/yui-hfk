@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use log::*;
-use num_traits::{One, Zero};
+use num_traits::Zero;
 use yui_core::lc::{LcKey, Lc};
 use yui_core::num::FF2;
 use yui_core::poly::MultiVar;
@@ -10,11 +10,12 @@ use yui_matrix::MatTrait;
 use yui_matrix::sparse::{SpMat, SpVec};
 use yui_matrix::sparse::pluq::{solve_pluq, solve_pluq_incr};
 
-use crate::{GCGen, GridComplex, GridDiagram, HFK};
+use crate::{GridComplex, GridDiagram, HFK};
 use crate::misc::lanczos::{find_ng_certificate, find_solution};
 use crate::grid_complex::{GCFiltered, GCInfGen};
 use crate::grid_complex::chain::GCInfChainExt;
 use super::{Candidates, Region};
+use super::complex_ext::project;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct G0CalcConfig {
@@ -293,11 +294,11 @@ impl G0Calc {
 
         // try the NG fast-path
         if self.config.try_fast_ng {
-            let n_raw_w = self.gc.count_raw_gens_in(k + 1, &pts_w);
-            let n_raw_z = self.gc.count_raw_gens_in(k, &pts_z);
-            debug!("specialized system size: {:?}", (n_raw_z, n_raw_w));
-            let smaller = n_raw_w < n_w || n_raw_z < n_z;
-            let tractable = n_raw_w < self.config.max_size && n_raw_z < self.config.max_size;
+            let n_proj_w = self.gc.count_proj_gens_in(k + 1, &pts_w);
+            let n_proj_z = self.gc.count_proj_gens_in(k, &pts_z);
+            debug!("specialized system size: {:?}", (n_proj_z, n_proj_w));
+            let smaller = n_proj_w < n_w || n_proj_z < n_z;
+            let tractable = n_proj_w < self.config.max_size && n_proj_z < self.config.max_size;
             if smaller && tractable && !self.pass_specialized(k, &pts_w, &pts_z, &z0, r) {
                 return Ok(None);
             }
@@ -373,12 +374,11 @@ impl G0Calc {
     ) -> bool {
         debug!("try NG fast-path ...");
 
-        let n = self.gc.grid_number() as usize;
-        let raw_gen_w = self.gc.raw_gens_in(k + 1, pts_w);
-        let raw_gen_z = self.gc.raw_gens_in(k, pts_z);
+        let gen_w = self.gc.proj_gens_in(k + 1, pts_w);
+        let gen_z = self.gc.proj_gens_in(k, pts_z);
 
-        if self.no_sol_specialized(&raw_gen_w, &raw_gen_z, z0, r, &vec![FF2::one(); n]) {
-            debug!("  NG via U = 1");
+        if self.no_sol_specialized(&gen_w, &gen_z, z0, r) {
+            debug!("  NG via Uᵢ = U₁ (i ≥ 1)");
             return false;
         }
 
@@ -388,23 +388,17 @@ impl G0Calc {
 
     fn no_sol_specialized(
         &self,
-        raw_gen_w: &Summand<GCGen, FF2>,
-        raw_gen_z: &Summand<GCGen, FF2>,
+        gen_w: &Summand<GCInfGen, FF2>,
+        gen_z: &Summand<GCInfGen, FF2>,
         z0: &Lc<GCInfGen, FF2>,
         r: &Region,
-        c: &[FF2],
     ) -> bool {
-        let lift = |x: &GCGen| Lc::from(GCInfGen::from(x.clone()));
-        let proj = move |g: &GCInfGen| if g.u.eval::<FF2>(c).is_zero() {
-            Lc::zero()
-        } else {
-            Lc::from(g.x.clone())
-        };
+        let proj = |g: &GCInfGen| Lc::from(project(g));
 
         debug!("create specialized matrix ...");
         let (a_c, y_c) = create_ay(
-            raw_gen_w, raw_gen_z, &z0.apply(proj),
-            |x| r.cutoff(&self.gc.differentiate(&x.apply(lift))).apply(proj),
+            gen_w, gen_z, &z0.apply(proj),
+            |x| r.cutoff(&self.gc.differentiate(x)).apply(proj),
         );
 
         debug!("  specialized: {:?} (nnz = {})", a_c.shape(), a_c.nnz());
