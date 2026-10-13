@@ -8,17 +8,7 @@
 //!
 //! With `G0CalcConfig::default()`, every region of every knot is decided,
 //! except for 11n31 and 11n34, whose remaining systems exceed `max_size`.
-//!
-//! 11n31: `R(1,1)` and `R[(0,1),(1,0)]` resign with the default config. With
-//! `max_size = 2_000_000`, `R(1,1)` is accepted, and with `try_fast_ng` the NG fast path
-//! also rejects `R[(0,1),(1,0)]`. So 11n31 is fully decided (14 min, 5.3 GB peak RSS).
-//!
-//! 11n34: 9 regions resign with the default config. With `try_fast_ng` and
-//! `max_size = 2_000_000`, the NG fast path rejects `R[(-1,0),(0,-1)]`,
-//! `R[(-2,1),(-1,0),(0,-1)]`, `R[(-1,1),(0,-1)]`, `R[(-2,1),(-1,0),(1,-1)]`,
-//! `R[(-1,1),(1,-1)]` and their transposes. The fast path skips
-//! `R[(-2,1),(-1,0),(0,-1),(1,-2)]`, but this region lies in `R[(-2,1),(-1,0),(1,-1)]`,
-//! so it is not realizable either. So 11n34 is fully decided (17 min, 7.3 GB peak RSS).
+//! These two are fully verified with `max_size = 2_000_000` and `try_fast_ng`.
 //!
 //! Cost is governed by the grid number (generator enumeration is O(n!)), so
 //! only the smallest grids run by default. For the rest:
