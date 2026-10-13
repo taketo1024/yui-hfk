@@ -1,5 +1,4 @@
-mod app;
-use app::App;
+use yhf::App;
 
 fn main() {
     let app = App::new();

@@ -1,105 +1,39 @@
 # yui-hfk
 
-[![crates.io](https://img.shields.io/crates/v/yui-hfk.svg)](https://crates.io/crates/yui-hfk)
-[![docs.rs](https://docs.rs/yui-hfk/badge.svg)](https://docs.rs/yui-hfk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 `yui-hfk` computes *Heegaard Floer knot homology* from grid diagrams, written in
 [Rust](https://www.rust-lang.org). It is built on the [`yui`](https://github.com/taketo1024/yui)
-libraries (`yui-core`, `yui-homology`, `yui-matrix`).
+libraries.
 
-Grid homology is a combinatorial description of knot Floer homology, introduced by
-Manolescu, Ozsváth, Sarkar, Szabó and Thurston. From a grid diagram `G` of a knot `K`
-one builds a chain complex whose homology recovers `HFK(K)`, with no analysis involved.
+## Libraries
+- [`yui-hfk`](./lib-hfk/) - Grid diagrams, grid complexes, and the invariants `ĤFK`, `g`, `τ` and `𝒢₀`.
 
-## What it computes
-
-- `HFK(K)` — the knot Floer homology, bigraded by Maslov and Alexander degree.
-- `GH~`, `GH^`, `GH⁻` — the grid homology variants.
-- `g(K)` — the Seifert genus, read off from the top Alexander degree.
-- `τ(K)` — the Ozsváth–Szabó concordance invariant.
-- `𝒢₀(K)` — the concordance invariant of \[Sat23\], a finite set of closed regions in `ℤ²`
-  from which `τ(K)`, `Υ_K` and the `d`-invariants of Dehn surgeries can be read.
-
-## Usage
-
-The `yhf` binary takes a knot name (resolved from the data directory) or a JSON file:
-
-```bash
-cargo run --release --bin yhf -- hfk 3_1     # HFK table
-cargo run --release --bin yhf -- gh 3_1      # grid homology (-t tilde|hat|minus)
-cargo run --release --bin yhf -- tau 3_1     # the tau invariant
-cargo run --release --bin yhf -- g0 3_1      # the G_0 invariant
-```
-
-A diagram can also be given inline, as `[[o-coords], [x-coords]]` — two row-permutations
-in OX-form, where entry `i` is the row of the `O` (resp. `X`) mark in column `i`:
-
-```bash
-cargo run --release --bin yhf -- hfk '[[2,1,0,4,3],[4,3,2,1,0]]'
-```
-
-Add `-m` to use the mirror, and `--log 1` (up to `3`) to follow the computation.
-`g0` accepts further options — `-g`, `-G/--g4`, `-t/--tau` supply known values to prune
-the candidate regions, and `--max-size` caps the linear systems that are attempted.
-
-As a library:
-
-```rust
-use yui_hfk::{GridDiagram, HFK, tau};
-
-let gd = GridDiagram::from_sequences(&[2, 1, 0, 4, 3], &[4, 3, 2, 1, 0]);
-assert_eq!(tau(&gd), Ok(1));
-assert_eq!(HFK::from(&gd).genus(), 1);
-```
+## Binaries
+- [`yhf`](./bin-yhf/) - Heegaard Floer knot homology computations.
 
 ## Grid diagram data
 
-`GridDiagram::load(name)` (and the `yhf` CLI when given a name like `3_1`) reads from an
-external user-data directory:
-
-1. `$YUI_DATA_DIR` if set.
-2. Otherwise the platform user-data dir:
-    - macOS: `~/Library/Application Support/yui/`
-    - Linux: `${XDG_DATA_HOME:-~/.local/share}/yui/`
-    - Windows: `%APPDATA%\yui\`
-
-Grid diagrams live in `<data_dir>/grid_diagrams/<name>.json`, each holding
-`[[o-coords], [x-coords]]`. To populate the directory from the
-[KnotInfo](https://knotinfo.org/) database:
+`GridDiagram::load(name)` (and the `yhf` CLI when given a name like `3_1`) reads grid diagrams
+from an external user-data directory, `$YUI_DATA_DIR` or the platform default. To populate it
+from the [KnotInfo](https://knotinfo.org/) database:
 
 ```bash
 cargo run --release --bin yhf -- setup             # writes to the default data dir
 cargo run --release --bin yhf -- setup --out DIR   # or to a custom directory
 ```
 
-Existing files are kept unless `--force` is given. `--in FILE` reads a local copy of
-the database (`.xls` or `.xls.zip`) instead of downloading it.
+See [`yhf`](./bin-yhf/) for details.
 
-## Tests
+### Data sources
 
-```bash
-cargo test                                       # unit tests
-cargo test --release -- --ignored --nocapture    # slow: G_0 and tau over knots up to 11 crossings
-```
+- Grid diagrams come from **KnotInfo**:
 
-The ignored tests in [`tests/oracle.rs`](https://github.com/taketo1024/yui-hfk/blob/main/tests/oracle.rs) check `𝒢₀`, `τ` and the genus
-against results from the original Swift implementation, for 47 knots with grid number 7–11.
-Expected values and grid diagrams are inlined, so they need no external data.
-
-## References
-
-- \[MOST07\] C. Manolescu, P. Ozsváth, Z. Szabó, D. Thurston,
-  *On combinatorial link Floer homology*, Geom. Topol. 11 (2007).
-- \[Book\] P. Ozsváth, A. Stipsicz, Z. Szabó,
-  *Grid Homology for Knots and Links*, AMS Math. Surveys and Monographs 208 (2015).
-- \[Sat23\] K. Sato, *A full-twist inequality for the ν⁺-invariant*, and the `𝒢₀` invariant.
-- \[SS\] T. Sano, K. Sato, *Computation of the Υ-invariant and the d-invariants of
-  Dehn surgeries for knots with up to 12 crossings*.
+  > C. Livingston and A. H. Moore, *KnotInfo: Table of Knot Invariants*,
+  > <https://knotinfo.org/>
 
 ## License
-
-`yui-hfk` is released under the [MIT license](https://opensource.org/licenses/MIT).
+`yui-hfk` is released under the [MIT license](LICENSE).
 
 ---
 

@@ -1,43 +1,22 @@
-[package]
-name = "yui-hfk"
-version = "0.1.0"
+[workspace]
+members = [
+    "lib-hfk",
+    "bin-yhf",
+]
+resolver = "3"
+
+[workspace.package]
 authors = ["Taketo Sano <taketo1024@gmail.com>"]
-description = "YUI-HFK: Heegaard Floer Knot Homology"
 license = "MIT"
-repository = "https://github.com/taketo1024/yui-hfk"
 edition = "2024"
 rust-version = "1.88"
+repository = "https://github.com/taketo1024/yui-hfk"
 
-[lib]
-path = "src/lib/lib.rs"
-
-[[bin]]
-name = "yhf"
-path = "src/bin/main.rs"
-
-[features]
-default = ["multithread"]
-multithread = ["rayon"]
-test-utils = []
+[workspace.dependencies]
+yui-hfk      = { version = "0.1.0", path = "lib-hfk" }
+yui-core     = "0.5.0"
+yui-homology = "0.5.0"
+yui-matrix   = "0.5.0"
 
 [profile.release]
 overflow-checks = true
-
-[dependencies]
-ahash = "0.8.12"
-calamine = "0.36.1"
-clap = { version = "4.6.1", features = ["derive"] }
-delegate = "0.13.5"
-env_logger = "0.11.5"
-itertools = "0.15.0"
-log = "0.4.29"
-num-integer = "0.1.46"
-num-traits = "0.2.19"
-rayon = { version = "1.12.0", optional = true }
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.149"
-ureq = "3.4.2"
-yui-core = "0.5.0"
-yui-homology = "0.5.0"
-yui-matrix = "0.5.0"
-zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
