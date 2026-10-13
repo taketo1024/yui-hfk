@@ -2,13 +2,14 @@
 //! original Swift implementation (which uses the correct `Alg = -a_0`).
 //!
 //! Both the expected values and the grid diagrams are inlined, so these tests
-//! need no external data. The Swift results came from a different diagram
-//! source, so some knots are mirrored relative to the diagram recorded here;
-//! `mirror` says which, and `tau` refers to the oriented diagram.
+//! need no external data. Where `mirror` is set, the test uses the mirror of the
+//! diagram recorded here, and `tau` refers to the mirror. This is so where the Swift
+//! result came from a mirrored diagram, and for some knots with `tau = 0`: their
+//! `G0`-type `O` is self-dual, and the mirror has no candidate region to reject.
 //!
-//! With `G0CalcConfig::default()`, every region of every knot is decided,
-//! except for 11n31 and 11n34, whose remaining systems exceed `max_size`.
-//! These two are fully verified with `max_size = 2_000_000` and `try_fast_ng`.
+//! With `G0CalcConfig::default()`, every region of every knot is decided, except
+//! for 11n31, whose remaining systems exceed `max_size`. It is fully verified with
+//! `max_size = 2_000_000` and `try_fast_ng`.
 //!
 //! Cost is governed by the grid number (generator enumeration is O(n!)), so
 //! only the smallest grids run by default. For the rest:
@@ -25,7 +26,7 @@ struct K {
     name: &'static str,
     os: &'static [u8],
     xs: &'static [u8],
-    /// The Swift result describes the mirror of the diagram above.
+    /// The test uses the mirror of the diagram above.
     mirror: bool,
     genus: usize,
     tau: isize,
@@ -103,25 +104,25 @@ fn tau_all() {
 #[rustfmt::skip]
 static KNOTS: &[K] = &[
     K { name: "8_19", os: &[3,2,1,0,6,5,4], xs: &[6,5,4,3,2,1,0], mirror: false, genus: 3, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
-    K { name: "9_42", os: &[5,6,0,1,7,3,4,2], xs: &[7,3,4,5,2,0,1,6], mirror: false, genus: 2, tau: 0, regions: &[&[(0,0)]] },
+    K { name: "9_42", os: &[5,6,0,1,7,3,4,2], xs: &[7,3,4,5,2,0,1,6], mirror: true, genus: 2, tau: 0, regions: &[&[(0,0)]] },
     K { name: "10_124", os: &[4,3,2,1,0,7,6,5], xs: &[7,6,5,4,3,2,1,0], mirror: false, genus: 4, tau: 4, regions: &[&[(0,4)], &[(1,2)], &[(2,1)], &[(4,0)]] },
     K { name: "10_128", os: &[2,1,0,8,5,4,3,7,6], xs: &[7,4,3,2,1,0,6,5,8], mirror: false, genus: 3, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
     K { name: "10_132m", os: &[1,0,2,5,4,3,6,7,8], xs: &[4,3,7,1,0,8,2,5,6], mirror: true, genus: 2, tau: 1, regions: &[&[(0,1)], &[(1,0)]] },
-    K { name: "10_136", os: &[8,4,5,0,6,2,3,1,7], xs: &[6,7,3,4,1,8,0,5,2], mirror: false, genus: 2, tau: 0, regions: &[&[(0,0)]] },
+    K { name: "10_136", os: &[8,4,5,0,6,2,3,1,7], xs: &[6,7,3,4,1,8,0,5,2], mirror: true, genus: 2, tau: 0, regions: &[&[(0,0)]] },
     K { name: "10_139", os: &[6,4,2,1,0,8,7,5,3], xs: &[8,7,6,5,4,3,1,2,0], mirror: false, genus: 4, tau: 4, regions: &[&[(0,4)], &[(1,2)], &[(2,1)], &[(4,0)]] },
     K { name: "10_145", os: &[0,2,1,4,3,5,6,7,8], xs: &[3,7,5,0,8,2,1,4,6], mirror: true, genus: 2, tau: 2, regions: &[&[(0,2)], &[(1,1)], &[(2,0)]] },
     K { name: "10_152", os: &[7,5,3,2,9,1,8,0,6,4], xs: &[9,8,7,6,5,4,2,3,1,0], mirror: false, genus: 4, tau: 4, regions: &[&[(0,4)], &[(1,2)], &[(2,1)], &[(4,0)]] },
     K { name: "10_154", os: &[7,5,3,2,9,1,0,6,8,4], xs: &[9,8,7,6,4,5,2,1,3,0], mirror: false, genus: 3, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
     K { name: "10_161", os: &[6,4,2,1,8,0,7,5,3], xs: &[8,7,6,5,3,4,1,2,0], mirror: false, genus: 3, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
-    K { name: "11n6", os: &[10,7,8,6,0,3,2,1,9,4,5], xs: &[8,9,4,2,5,10,7,6,3,0,1], mirror: false, genus: 3, tau: 0, regions: &[&[(0,0)]] },
+    K { name: "11n6", os: &[10,7,8,6,0,3,2,1,9,4,5], xs: &[8,9,4,2,5,10,7,6,3,0,1], mirror: true, genus: 3, tau: 0, regions: &[&[(0,0)]] },
     K { name: "11n9", os: &[8,9,4,2,1,0,10,7,5,3,6], xs: &[10,7,8,6,5,4,3,1,2,9,0], mirror: false, genus: 4, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
     K { name: "11n12", os: &[9,8,7,1,2,0,4,6,3,5], xs: &[7,6,4,5,9,3,1,2,8,0], mirror: false, genus: 2, tau: 1, regions: &[&[(0,1)], &[(1,0)]] },
     K { name: "11n19", os: &[6,0,1,2,4,5,3,7,8], xs: &[2,3,7,8,0,1,6,4,5], mirror: true, genus: 3, tau: 1, regions: &[&[(0,1)], &[(1,0)]] },
-    K { name: "11n20", os: &[7,8,4,5,0,6,9,3,1,2], xs: &[9,6,7,3,4,1,2,0,5,8], mirror: false, genus: 2, tau: 0, regions: &[&[(0,0)]] },
+    K { name: "11n20", os: &[7,8,4,5,0,6,9,3,1,2], xs: &[9,6,7,3,4,1,2,0,5,8], mirror: true, genus: 2, tau: 0, regions: &[&[(0,0)]] },
     K { name: "11n24", os: &[9,8,7,1,0,2,6,4,3,5], xs: &[7,6,4,5,3,9,1,0,8,2], mirror: false, genus: 3, tau: 0, regions: &[&[(0,0)]] },
     K { name: "11n27", os: &[7,5,2,1,0,6,9,8,4,3], xs: &[9,8,7,4,3,2,5,1,0,6], mirror: false, genus: 4, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
     K { name: "11n31", os: &[8,9,4,1,2,0,10,5,7,3,6], xs: &[10,7,8,6,5,4,3,1,2,9,0], mirror: false, genus: 3, tau: 2, regions: &[&[(0,2)], &[(1,1)], &[(2,0)]] },
-    K { name: "11n34", os: &[2,0,1,4,7,5,6,3,8,9,10], xs: &[5,3,9,0,2,1,10,7,4,6,8], mirror: false, genus: 3, tau: 0, regions: &[&[(0,0)]] },
+    K { name: "11n34", os: &[2,0,1,4,7,5,6,3,8,9,10], xs: &[5,3,9,0,2,1,10,7,4,6,8], mirror: true, genus: 3, tau: 0, regions: &[&[(0,0)]] },
     K { name: "11n38", os: &[3,2,4,0,8,1,5,7,6], xs: &[7,5,1,3,2,6,0,4,8], mirror: false, genus: 2, tau: 0, regions: &[&[(0,0)]] },
     K { name: "11n45", os: &[8,6,4,3,5,0,1,10,7,9,2], xs: &[10,9,8,7,1,2,6,3,0,4,5], mirror: false, genus: 3, tau: 0, regions: &[&[(0,0)]] },
     K { name: "11n57", os: &[7,8,4,2,1,0,9,6,5,3], xs: &[9,6,7,5,4,3,2,1,0,8], mirror: false, genus: 4, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
@@ -132,7 +133,7 @@ static KNOTS: &[K] = &[
     K { name: "11n80", os: &[10,7,8,6,0,3,1,2,9,4,5], xs: &[8,9,4,2,5,10,6,7,3,0,1], mirror: true, genus: 3, tau: 1, regions: &[&[(0,1)], &[(1,0)]] },
     K { name: "11n81", os: &[9,8,1,0,7,6,3,2,5,4], xs: &[6,3,5,4,2,1,9,8,0,7], mirror: false, genus: 4, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
     K { name: "11n88", os: &[7,5,4,2,0,9,8,1,3,6], xs: &[9,8,7,6,5,3,2,4,0,1], mirror: false, genus: 4, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
-    K { name: "11n92", os: &[9,8,7,1,2,0,6,3,4,5], xs: &[7,6,3,4,9,5,1,8,0,2], mirror: false, genus: 3, tau: 0, regions: &[&[(0,0)]] },
+    K { name: "11n92", os: &[9,8,7,1,2,0,6,3,4,5], xs: &[7,6,3,4,9,5,1,8,0,2], mirror: true, genus: 3, tau: 0, regions: &[&[(0,0)]] },
     K { name: "11n96", os: &[1,8,6,0,9,4,3,2,5,7], xs: &[4,3,2,5,1,0,6,7,8,9], mirror: false, genus: 3, tau: 0, regions: &[&[(0,0)]] },
     K { name: "11n102", os: &[5,0,8,2,1,3,4,7,6,9], xs: &[1,4,3,5,6,0,9,2,8,7], mirror: true, genus: 2, tau: 1, regions: &[&[(0,1)], &[(1,0)]] },
     K { name: "11n104", os: &[7,8,2,1,9,0,6,5,4,3], xs: &[9,6,7,5,4,3,1,2,0,8], mirror: false, genus: 4, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
@@ -142,7 +143,7 @@ static KNOTS: &[K] = &[
     K { name: "11n135", os: &[7,8,2,9,0,6,5,4,3,1], xs: &[9,6,7,4,3,1,2,0,8,5], mirror: false, genus: 3, tau: 2, regions: &[&[(0,2)], &[(1,1)], &[(2,0)]] },
     K { name: "11n138", os: &[9,8,7,6,0,2,1,4,3,5], xs: &[7,6,4,1,3,9,5,0,8,2], mirror: false, genus: 2, tau: 0, regions: &[&[(0,0)]] },
     K { name: "11n143", os: &[7,5,3,6,9,0,2,1,8,4], xs: &[9,8,7,1,4,5,6,3,2,0], mirror: false, genus: 3, tau: 0, regions: &[&[(0,0)]] },
-    K { name: "11n145", os: &[9,8,7,6,0,1,5,2,3,4], xs: &[7,5,3,2,4,9,0,8,6,1], mirror: false, genus: 3, tau: 0, regions: &[&[(0,0)]] },
+    K { name: "11n145", os: &[9,8,7,6,0,1,5,2,3,4], xs: &[7,5,3,2,4,9,0,8,6,1], mirror: true, genus: 3, tau: 0, regions: &[&[(0,0)]] },
     K { name: "11n151", os: &[10,9,8,3,6,1,0,7,4,2,5], xs: &[8,6,4,7,10,5,3,2,1,9,0], mirror: false, genus: 2, tau: 1, regions: &[&[(0,1)], &[(1,0)]] },
     K { name: "11n152", os: &[10,9,8,3,6,5,0,7,4,2,1], xs: &[8,6,4,7,10,2,3,1,0,9,5], mirror: false, genus: 3, tau: 1, regions: &[&[(0,1)], &[(1,0)]] },
     K { name: "11n183", os: &[7,5,2,3,1,9,0,8,6,4], xs: &[9,8,6,7,4,2,5,3,1,0], mirror: false, genus: 3, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
