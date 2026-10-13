@@ -13,13 +13,13 @@
 //! Cost is governed by the grid number (generator enumeration is O(n!)), so
 //! only the smallest grids run by default. For the rest:
 //!
-//!     cargo test --release --test oracle -- --ignored --nocapture
+//!     cargo test --release --test thick_nonslice_11 -- --ignored --nocapture
 
-use std::collections::BTreeSet;
+mod common;
 
-use yui_hfk::g_zero::Region;
 use yui_hfk::g_zero::calc::G0CalcError;
-use yui_hfk::{G0Calc, G0CalcConfig, GridDiagram};
+use yui_hfk::{G0CalcConfig, GridDiagram};
+use common::{Regions, check_g0, run_all};
 
 struct K {
     name: &'static str,
@@ -49,52 +49,13 @@ impl K {
     }
 }
 
-type Regions = BTreeSet<BTreeSet<(isize, isize)>>;
-
-fn regions_of(rs: &[Region]) -> Regions {
-    rs.iter()
-        .map(|r| r.corners().iter().map(|c| (c.i, c.j)).collect())
-        .collect()
-}
-
-/// Checks one knot, returning the number of regions left undecided.
-///
-/// A large system can exhaust `max_size` and resign without being wrong, so
-/// undecided regions are tolerated. What must hold is that nothing spurious
-/// was accepted and nothing real was rejected.
 fn check(k: &K) -> usize {
-    let mut calc = G0Calc::init(&k.diagram(), Some(k.genus), None, None, G0CalcConfig::default());
-    calc.run();
-
-    let accepted = regions_of(calc.accepted());
-    let resigned = regions_of(calc.resigned());
-    let expected = k.expected();
-
-    let spurious: Vec<_> = accepted.difference(&expected).collect();
-    assert!(spurious.is_empty(), "{}: accepted non-realizable {spurious:?}", k.name);
-
-    let missed: Vec<_> = expected.difference(&accepted)
-        .filter(|r| !resigned.contains(*r))
-        .collect();
-    assert!(missed.is_empty(), "{}: rejected realizable {missed:?}", k.name);
-
-    resigned.len()
+    check_g0(k.name, &k.diagram(), k.genus, None, None, &k.expected(), G0CalcConfig::default())
 }
 
 fn run_over(label: &str, keep: impl Fn(&K) -> bool) {
     let selected: Vec<_> = KNOTS.iter().filter(|k| keep(k)).collect();
-    assert!(!selected.is_empty(), "{label}: no knots selected");
-
-    let mut undecided = 0;
-    for k in &selected {
-        let n = check(k);
-        if n > 0 {
-            undecided += 1;
-            eprintln!("  {}: agrees, but {n} region(s) undecided", k.name);
-        }
-    }
-
-    eprintln!("{label}: {} knots, {undecided} with undecided regions", selected.len());
+    run_all(label, &selected, |k| k.name, check);
 }
 
 #[test]

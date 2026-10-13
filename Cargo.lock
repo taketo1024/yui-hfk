@@ -1588,6 +1588,7 @@ dependencies = [
  "ahash",
  "cfg-if",
  "delegate",
+ "env_logger",
  "itertools",
  "log",
  "num-integer",
