@@ -24,6 +24,7 @@ overflow-checks = true
 
 [dependencies]
 ahash = "0.8.12"
+calamine = "0.36.1"
 clap = { version = "4.6.1", features = ["derive"] }
 delegate = "0.13.5"
 env_logger = "0.11.5"
@@ -34,6 +35,8 @@ num-traits = "0.2.19"
 rayon = { version = "1.12.0", optional = true }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
+ureq = "3.4.2"
 yui-core = "0.5.0"
 yui-homology = "0.5.0"
 yui-matrix = "0.5.0"
+zip = { version = "8.6.0", default-features = false, features = ["deflate"] }

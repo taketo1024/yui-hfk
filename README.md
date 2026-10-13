@@ -67,10 +67,12 @@ Grid diagrams live in `<data_dir>/grid_diagrams/<name>.json`, each holding
 [KnotInfo](https://knotinfo.org/) database:
 
 ```bash
-pip install 'xlrd<2.0'                             # or any xlrd that reads .xls
-python3 scripts/fetch-knotinfo-data.py             # writes to the default data dir
-python3 scripts/fetch-knotinfo-data.py --out DIR   # or to a custom directory
+cargo run --release --bin yhf -- setup             # writes to the default data dir
+cargo run --release --bin yhf -- setup --out DIR   # or to a custom directory
 ```
+
+Existing files are kept unless `--force` is given. `--in FILE` reads a local copy of
+the database (`.xls` or `.xls.zip`) instead of downloading it.
 
 ## Tests
 

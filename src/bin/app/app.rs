@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 use crate::app::cmd::tau;
 
 use super::args::AppArgs;
-use super::cmd::{g0, gh, hfk};
+use super::cmd::{g0, gh, hfk, setup};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -19,6 +19,8 @@ pub enum Cmd {
     Gh(gh::Args),
     Hfk(hfk::Args),
     Tau(tau::Args),
+    /// Download grid diagrams from KnotInfo into the data directory
+    Setup(setup::Args),
 }
 
 impl CliArgs {
@@ -28,6 +30,7 @@ impl CliArgs {
             Cmd::Gh(args)  => args,
             Cmd::Hfk(args) => args,
             Cmd::Tau(args) => args,
+            Cmd::Setup(args) => args,
         }
     }
 
@@ -55,6 +58,7 @@ impl App {
             Cmd::Gh(args)  => gh::dispatch(args),
             Cmd::Hfk(args) => hfk::dispatch(args),
             Cmd::Tau(args) => tau::dispatch(args),
+            Cmd::Setup(args) => setup::dispatch(args),
         };
 
         log::info!("run time: {}", format_duration(start.elapsed()));
