@@ -33,7 +33,8 @@ pub fn dual(g0: &Regions) -> Regions {
 }
 
 /// Checks one knot, returning the number of regions left undecided. The known
-/// `genus`, `g4` and `tau` are passed to `G0Calc::init`.
+/// `genus`, `g4` and `tau` are passed to `G0Calc::init`, and `expected` is passed
+/// to `G0Calc::set_expected` as a hint for the order of the tests.
 ///
 /// A large system can exhaust `max_size` and resign without being wrong, so
 /// undecided regions are tolerated. What must hold is that nothing spurious
@@ -47,7 +48,12 @@ pub fn check_g0(
     expected: &Regions,
     config: G0CalcConfig,
 ) -> usize {
+    let hint = expected.iter()
+        .map(|r| Region::new(r.iter().map(|&(i, j)| Corner::new(i, j))))
+        .collect();
+
     let mut calc = G0Calc::init(gd, Some(genus), g4, tau, config);
+    calc.set_expected(hint);
     calc.run();
 
     let accepted = regions_of(calc.accepted());

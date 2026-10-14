@@ -27,6 +27,11 @@ pub struct Args {
     #[arg(short='R', long, conflicts_with_all = ["g", "g4", "tau"])]
     pub region: Option<Region>,
 
+    /// A region expected in G0, e.g. "R(0, 1)" (repeatable). Expected candidates are
+    /// tested first, searching for a solution first; the results do not depend on it.
+    #[arg(long = "expect", value_name = "REGION")]
+    pub expect: Vec<Region>,
+
     /// Skip HFK-based region filtering
     #[arg(long)]
     pub no_filter_regions: bool,
@@ -95,6 +100,7 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
         None => G0Calc::init(&gd, args.g, args.g4, args.tau, config),
     };
 
+    calc.set_expected(args.expect.clone());
     calc.run();
 
     if let Some(r) = &args.region {

@@ -208,11 +208,18 @@ impl G0Calc {
         &self.gc
     }
 
-    /// Processes all remaining candidates and populates `candidates.accepted`.
+    /// Regions expected to be realizable, as a hint for the order of the tests: the candidates
+    /// among them (up to transposition) are tested first, searching for a solution first and
+    /// without the NG fast-path. The results do not depend on the hint.
+    pub fn set_expected(&mut self, regions: Vec<Region>) {
+        self.candidates.set_expected(regions);
+    }
+
+    /// Processes all remaining candidates and populates `candidates.accepted`: the expected
+    /// ones first, searching for a solution first, and then the rest as usual.
     pub fn run(&mut self) {
-        while !self.candidates.regions.is_empty() {
-            let r = self.candidates.regions.remove(0);
-            self.process(&r);
+        while let Some((r, expected)) = self.candidates.take_next() {
+            self.process(&r, expected);
         }
     }
 
@@ -227,7 +234,7 @@ impl G0Calc {
     // Tests whether `r` is realizable: tries to find a cycle homologous to z
     // inside r. Shifts both r and z by s = right_end(r) so that the shifted
     // region has right_end = 0, which is required by find_homologous.
-    fn process(&mut self, r: &Region) {
+    fn process(&mut self, r: &Region, positive: bool) {
         info!("try: {r} (remain: {})", self.candidates.regions.len());
 
         if r.contains_chain(&self.z) {
@@ -241,7 +248,11 @@ impl G0Calc {
         let r_shifted = r.shift(-s, -s);
         let z_shifted = self.shift_z(s as usize);
 
-        match self.find_homologous(&z_shifted, &r_shifted) {
+        if positive {
+            debug!("  {r} is expected: positive first.");
+        }
+
+        match self.find_homologous(&z_shifted, &r_shifted, positive) {
             Ok(Some(_)) => {
                 info!("OK: {r}");
                 self.candidates.accept(r);
@@ -257,6 +268,7 @@ impl G0Calc {
         }
     }
 
+
     // Returns z multiplied by U_0^s, shifting all generator coordinates by
     // (-s, -s) to match r.shift(-s, -s).
     fn shift_z(&self, s: usize) -> Lc<GCInfGen, FF2> {
@@ -264,7 +276,8 @@ impl G0Calc {
         self.z.mul(&u)
     }
 
-    /// Tests whether `z` has a homologous cycle contained in the region `r`.
+    /// Tests whether `z` has a homologous cycle contained in the region `r`. With `positive`,
+    /// `r` is expected to be realizable: a solution is searched first, and the NG fast-path is skipped.
     ///
     /// Returns:
     /// - `Ok(Some(z'))` if a homologous cycle was found.
@@ -275,6 +288,7 @@ impl G0Calc {
         &self,
         z: &Lc<GCInfGen, FF2>,
         r: &Region,
+        positive: bool,
     ) -> Result<Option<Lc<GCInfGen, FF2>>, G0CalcError> {
         assert!(z.is_maslov_homogeneous());
 
@@ -292,8 +306,8 @@ impl G0Calc {
 
         debug!("linear system size: {:?}", (n_z, n_w));
 
-        // try the NG fast-path
-        if self.config.try_fast_ng {
+        // try the NG fast-path, unless r is expected to be realizable
+        if self.config.try_fast_ng && !positive {
             let n_proj_w = self.gc.count_proj_gens_in(k + 1, &pts_w);
             let n_proj_z = self.gc.count_proj_gens_in(k, &pts_z);
             debug!("specialized system size: {:?}", (n_proj_z, n_proj_w));
@@ -321,7 +335,7 @@ impl G0Calc {
         );
         debug!("  a: {:?} (nnz: {})", a.shape(), a.nnz());
 
-        let Some(x_sol) = self.find_sol(&a, &y)? else {
+        let Some(x_sol) = self.find_sol(&a, &y, positive)? else {
             return Ok(None);
         };
         let w = gen_w.devectorize(&x_sol);
@@ -334,15 +348,27 @@ impl G0Calc {
 
     /// `Ok(Some(x))`: a solution of `a·x = y`, `Ok(None)`: proven unsolvable,
     /// `Err(Resigned)`: undecided (Lanczos found neither a certificate nor a solution).
-    fn find_sol(&self, a: &SpMat<FF2>, y: &SpVec<FF2>) -> Result<Option<SpVec<FF2>>, G0CalcError> {
+    /// With `positive`, Lanczos searches for a solution before a certificate.
+    fn find_sol(&self, a: &SpMat<FF2>, y: &SpVec<FF2>, positive: bool) -> Result<Option<SpVec<FF2>>, G0CalcError> {
         debug!("solve linear system ...");
 
         let x = match self.config.mode {
             Mode::Lanczos => {
-                if find_ng_certificate(a, y, LANCZOS_ROUNDS).is_some() {
-                    return Ok(None);
+                let certify = || find_ng_certificate(a, y, LANCZOS_ROUNDS).is_some();
+                let solve = || find_solution(a, y, LANCZOS_ROUNDS);
+
+                if positive {
+                    match solve() {
+                        Some(x) => x,
+                        None if certify() => return Ok(None),
+                        None => return Err(G0CalcError::Resigned),
+                    }
+                } else {
+                    if certify() {
+                        return Ok(None);
+                    }
+                    solve().ok_or(G0CalcError::Resigned)?
                 }
-                find_solution(a, y, LANCZOS_ROUNDS).ok_or(G0CalcError::Resigned)?
             }
             Mode::Pluq => {
                 let x = if a.n_rows() < self.config.chunk {
@@ -406,7 +432,7 @@ impl G0Calc {
         // note: only "proven unsolvable" matters here, so Lanczos skips the search for a solution.
         match self.config.mode {
             Mode::Lanczos => find_ng_certificate(&a_c, &y_c, LANCZOS_ROUNDS).is_some(),
-            Mode::Pluq => matches!(self.find_sol(&a_c, &y_c), Ok(None)),
+            Mode::Pluq => matches!(self.find_sol(&a_c, &y_c, false), Ok(None)),
         }
     }
 }
@@ -456,7 +482,7 @@ mod tests {
         let r = Region::simple(0, 0);
         assert!(r.contains_chain(z));
         
-        let z1 = calc.find_homologous(z, &r).unwrap().expect("expected Some");
+        let z1 = calc.find_homologous(z, &r, false).unwrap().expect("expected Some");
         assert!(z1.is_zero());
     }
 
@@ -471,7 +497,7 @@ mod tests {
         assert!(!z.is_zero());
 
         let r = Region::new([Corner::new(-1, 0), Corner::new(0, -1)]);
-        assert_eq!(calc.find_homologous(z, &r), Ok(None));
+        assert_eq!(calc.find_homologous(z, &r, false), Ok(None));
     }
 
     #[test]
@@ -487,7 +513,7 @@ mod tests {
         let r = Region::simple(0, 1);
         assert!(r.contains_chain(z));
 
-        let z1 = calc.find_homologous(z, &r).unwrap().expect("expected Some for trefoil R(0,1)");
+        let z1 = calc.find_homologous(z, &r, false).unwrap().expect("expected Some for trefoil R(0,1)");
         assert!(z1.is_zero());
     }
 
@@ -513,6 +539,40 @@ mod tests {
         assert_eq!(rs.len(), 2);
         assert!(rs.contains(&Region::simple(0, 1)));
         assert!(rs.contains(&Region::simple(1, 0)));
+    }
+
+    // The expected regions change only the order: a right hint and a wrong one give the same G0.
+    #[test]
+    fn test_trefoil_expected() {
+        let gd = GridDiagram::test_data("3_1").unwrap();
+        for hint in [vec![Region::simple(0, 1), Region::simple(1, 0)], vec![Region::simple(0, 0)]] {
+            let mut calc = G0Calc::init(&gd, None, None, None, config());
+            calc.set_expected(hint);
+            calc.run();
+
+            let rs = calc.accepted();
+            assert_eq!(rs.len(), 2);
+            assert!(rs.contains(&Region::simple(0, 1)));
+            assert!(rs.contains(&Region::simple(1, 0)));
+        }
+    }
+
+    // A resigned expected region leaves the candidates (but not `expected`), so the run ends.
+    // note: R(0, 1) and R(1, 0) contain z, so they need no system. R(0, 0) needs one, which
+    // is tiny for the trefoil, so max_size = 0 to make it resign.
+    #[test]
+    fn test_resigned_expected_terminates() {
+        let gd = GridDiagram::test_data("3_1").unwrap();
+        let cfg = G0CalcConfig { max_size: 0, ..config() };
+        let mut calc = G0Calc::init(&gd, None, None, None, cfg);
+        calc.set_expected(vec![Region::simple(0, 0)]);
+        calc.run();
+
+        assert!(calc.candidates.regions.is_empty());
+        assert!(calc.resigned().contains(&Region::simple(0, 0)),
+            "accepted {:?}, resigned {:?}", calc.accepted(), calc.resigned());
+        assert!(calc.accepted().contains(&Region::simple(0, 1)));
+        assert_eq!(calc.candidates.expected, vec![Region::simple(0, 0)]);
     }
 
     #[test]

@@ -1,3 +1,5 @@
+use log::info;
+
 use crate::HFK;
 use super::{Corner, Region, Screen};
 
@@ -5,11 +7,15 @@ pub struct Candidates {
     pub regions: Vec<Region>,
     pub accepted: Vec<Region>,
     pub resigned: Vec<Region>,
+    /// Regions expected to be realizable, not necessarily minimal (up to transposition).
+    /// Those among `regions` come first. An expected region leaves the list once settled:
+    /// when it contains an accepted region, or lies inside a rejected one.
+    pub expected: Vec<Region>,
 }
 
 impl Candidates {
-    pub fn new() -> Self { 
-        Candidates { regions: vec![], accepted: vec![], resigned: vec![] }
+    pub fn new() -> Self {
+        Candidates { regions: vec![], accepted: vec![], resigned: vec![], expected: vec![] }
     }
 
     /// Generates all combinatorial candidates for genus g.
@@ -68,7 +74,7 @@ impl Candidates {
             }
         }
 
-        Candidates { regions, accepted: vec![], resigned: vec![] }
+        Candidates { regions, accepted: vec![], resigned: vec![], expected: vec![] }
     }
 
     /// Removes symmetric pairs {R, Rᵀ} in place, keeping the one with the
@@ -88,13 +94,35 @@ impl Candidates {
         self.regions = result;
     }
 
-    pub fn add(&mut self, r: Region) { 
+    pub fn add(&mut self, r: Region) {
         self.regions.push(r);
     }
 
+    pub fn set_expected(&mut self, regions: Vec<Region>) {
+        self.expected = regions;
+    }
+
+    /// Removes and returns the next candidate to test, and whether it is expected:
+    /// the expected ones first, then the rest in order.
+    pub fn take_next(&mut self) -> Option<(Region, bool)> {
+        if self.regions.is_empty() {
+            return None;
+        }
+        match self.regions.iter().position(|r| self.is_expected(r)) {
+            Some(i) => Some((self.regions.remove(i), true)),
+            None => Some((self.regions.remove(0), false)),
+        }
+    }
+
+    fn is_expected(&self, r: &Region) -> bool {
+        let rt = r.transposed();
+        self.expected.iter().any(|e| e == r || *e == rt)
+    }
+
     /// Marks `r` as realizable: moves `r` and `rᵀ` into `accepted`, removes any
-    /// previously accepted regions larger than them (non-minimal), and removes all
-    /// candidates larger than or equal to `r` or `rᵀ` from `regions`.
+    /// previously accepted regions larger than them (non-minimal), removes all
+    /// candidates larger than or equal to `r` or `rᵀ` from `regions`, and likewise
+    /// from `expected`.
     pub fn accept(&mut self, r: &Region) {
         let rt = r.transposed();
 
@@ -107,16 +135,26 @@ impl Candidates {
 
         // Remove r, rᵀ, and all larger regions from the remaining candidates.
         self.regions.retain(|s| !s.includes(r) && !s.includes(&rt));
-        
+
+        // The expected regions containing r or rᵀ are realizable: settled.
+        self.expected.retain(|e| !e.includes(r) && !e.includes(&rt));
+
         // Sort accepted regions.
         Self::sort_regions(&mut self.accepted);
     }
 
     /// Marks `r` as unrealizable: removes all candidates equal to or smaller than
-    /// `r` or `rᵀ` from `regions` (they are automatically unrealizable).
+    /// `r` or `rᵀ` from `regions` (they are automatically unrealizable), and from `expected`.
     pub fn reject(&mut self, r: &Region) {
         let rt = r.transposed();
         self.regions.retain(|s| !r.includes(s) && !rt.includes(s));
+        self.expected.retain(|e| {
+            let unrealizable = r.includes(e) || rt.includes(e);
+            if unrealizable {
+                info!("  expected region {e} is not realizable, dropped.");
+            }
+            !unrealizable
+        });
     }
 
     /// Marks `r` as undecided: moves `r` and `rᵀ` into `resigned` and removes
@@ -200,7 +238,7 @@ mod tests {
     }
 
     fn make_candidates(regions: &[Region]) -> Candidates {
-        Candidates { regions: regions.to_vec(), accepted: vec![], resigned: vec![] }
+        Candidates { regions: regions.to_vec(), accepted: vec![], resigned: vec![], expected: vec![] }
     }
 
     #[test]
@@ -257,7 +295,7 @@ mod tests {
         // R[(0,1),(1,0)] has corners with i+j = 1 and i+j = 1 (both on boundary g4=1).
         // As a multi-corner region it must be removed; R(0,1) alone survives.
         let r_multi = Region::new([Corner::new(0, 1), Corner::new(1, 0)]);
-        let mut cs = Candidates { regions: vec![Region::simple(0, 1), r_multi], accepted: vec![], resigned: vec![] };
+        let mut cs = Candidates { regions: vec![Region::simple(0, 1), r_multi], accepted: vec![], resigned: vec![], expected: vec![] };
         cs.filter_by_g4(1);
         assert_eq!(cs.regions, vec![Region::simple(0, 1)]);
     }
@@ -320,5 +358,32 @@ mod tests {
         cs.desymmetrize();
         cs.filter_by_hfk(&hfk);
         assert_eq!(cs.regions, vec![Region::simple(0, 0)]);
+    }
+
+    #[test]
+    fn test_take_next_expected_first() {
+        let mut cs = make_candidates(&[Region::simple(0, 0), Region::simple(0, 1), Region::simple(1, 1)]);
+        cs.set_expected(vec![Region::simple(1, 0)]); // R(0, 1) up to transposition
+
+        assert_eq!(cs.take_next(), Some((Region::simple(0, 1), true)));
+        assert_eq!(cs.take_next(), Some((Region::simple(0, 0), false)));
+        assert_eq!(cs.take_next(), Some((Region::simple(1, 1), false)));
+        assert_eq!(cs.take_next(), None);
+    }
+
+    #[test]
+    fn test_reject_drops_expected() {
+        let mut cs = make_candidates(&[]);
+        cs.set_expected(vec![Region::simple(0, 0), Region::simple(0, 2)]);
+        cs.reject(&Region::simple(1, 1)); // R(0, 0) ⊆ R(1, 1) is not realizable either
+        assert_eq!(cs.expected, vec![Region::simple(0, 2)]);
+    }
+
+    #[test]
+    fn test_accept_settles_expected() {
+        let mut cs = make_candidates(&[]);
+        cs.set_expected(vec![Region::simple(0, 0), Region::simple(2, 2)]);
+        cs.accept(&Region::simple(1, 1)); // R(2, 2) ⊇ R(1, 1) is realizable, R(0, 0) is not settled
+        assert_eq!(cs.expected, vec![Region::simple(0, 0)]);
     }
 }
