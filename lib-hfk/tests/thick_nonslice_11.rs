@@ -1,5 +1,5 @@
-//! Regression fixture for `G0(K)`, checked against results computed by the
-//! original Swift implementation (which uses the correct `Alg = -a_0`).
+//! `G0(K)` for the prime knots with up to 11 crossings that are homologically thick
+//! and non-slice: the 44 knots of Table 1 in [SS], of grid number 7 to 11.
 //!
 //! Both the expected values and the grid diagrams are inlined, so these tests
 //! need no external data. Where `mirror` is set, the test uses the mirror of the
