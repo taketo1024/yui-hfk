@@ -140,7 +140,8 @@ impl Recurrence {
         // S_i and W_i^inv = S_i (S_iᵀ T_i S_i)⁻¹ S_iᵀ (16), by Fig. 1 (see `select_columns`).
         // note: near the end, T_i may be too small to cover the columns skipped at the
         // previous step. We stop there; `combine` checks every vector it returns.
-        let Some((mask, winv0)) = select_columns(&vt_sv, self.mask_prev) else {
+        let nonzero = v[0].iter().fold(0, |acc, r| acc | r); // the nonzero columns of V_i
+        let Some((mask, winv0)) = select_columns(&vt_sv, self.mask_prev, nonzero) else {
             return Err(Stop::NoSelection);
         };
 
@@ -178,8 +179,9 @@ impl Recurrence {
 }
 
 /// Montgomery's choice of `S_i` (§8, Fig. 1): a column mask `S` and `W^inv = S (Sᵀ t S)⁻¹ Sᵀ` (16),
-/// where `S` must contain every column not in `S_{i-1}` (15). `None` on failure (a breakdown).
-fn select_columns(t: &Mat64, mask_prev: u64) -> Option<(u64, Mat64)> {
+/// where `S` must contain every column not in `S_{i-1}` (15) among the `nonzero` columns of `V_i`.
+/// `None` on failure (a breakdown).
+fn select_columns(t: &Mat64, mask_prev: u64, nonzero: u64) -> Option<(u64, Mat64)> {
     // Fig. 1: Gaussian elimination on [T | I], with the columns in S_{i-1} last,
     // so that the others are chosen for S_i whenever T allows.
     let mut m: [(u64, u64); 64] = from_fn(|i| (t[i], 1 << i)); // [t | I]
@@ -209,12 +211,11 @@ fn select_columns(t: &Mat64, mask_prev: u64) -> Option<(u64, Mat64)> {
         }
     }
 
-    // S_i ∪ S_{i-1} must be all N columns, by (15).
-    // note: stricter than §8, which checks this only for the nonzero columns. So a zero
-    // column of V_i outside S_{i-1} stops the run here (see `Recurrence::step`).
-    if mask == 0 || mask | mask_prev != u64::MAX {
+    // Every nonzero column of V_i must be in S_i ∪ S_{i-1}, by (15), as checked in §8.
+    let uncovered = !(mask | mask_prev) & nonzero;
+    if mask == 0 || uncovered != 0 {
         debug!("lanczos: select_columns: |S| = {}, |S_prev| = {}, uncovered = {}",
-            mask.count_ones(), mask_prev.count_ones(), (!(mask | mask_prev)).count_ones());
+            mask.count_ones(), mask_prev.count_ones(), uncovered.count_ones());
         return None;
     }
 
@@ -365,7 +366,7 @@ mod tests {
         // t invertible: S is everything, and W^inv = t⁻¹.
         let v = rand_block(&mut rng, 2000);
         let t = inner(&v, &v);
-        let (mask, winv) = select_columns(&t, 0).expect("t is invertible");
+        let (mask, winv) = select_columns(&t, 0, u64::MAX).expect("t is invertible");
         assert_eq!(mask, u64::MAX);
         assert_eq!(mul64(&winv, &t), id);
 
@@ -373,12 +374,26 @@ mod tests {
         let low = (1u64 << 40) - 1;
         let v: Vec<u64> = rand_block(&mut rng, 2000).iter().map(|x| x & low).collect();
         let t = inner(&v, &v);
-        let (mask, winv) = select_columns(&t, !low).expect("a selection exists");
+        let (mask, winv) = select_columns(&t, !low, u64::MAX).expect("a selection exists");
         let wt = mul64(&winv, &t);
         assert_eq!(mask, low);
         assert_eq!(mul64(&wt, &winv), winv);
         assert!((0..64).all(|i| winv[i] & !mask == 0 && (bit(mask, i) || winv[i] == 0)));
         assert!((0..40).all(|i| wt[i] == 1 << i));
+    }
+
+    // §8: an uncovered column outside S_{i-1} is a breakdown only if it is nonzero in V_i.
+    #[test]
+    fn select_columns_ignores_zero_columns() {
+        // t = I on columns 0..30 and S_prev = 40..64: columns 30..40 cannot be selected.
+        // note: v has the unit rows, so that t is invertible there (a random vᵀv often is not).
+        let (low, sel) = ((1u64 << 40) - 1, (1u64 << 30) - 1);
+        let v: Vec<u64> = (0..30).map(|k| 1 << k).collect();
+        let t = inner(&v, &v);
+
+        let (mask, _) = select_columns(&t, !low, sel).expect("columns 30..40 are zero");
+        assert_eq!(mask, sel);
+        assert!(select_columns(&t, !low, u64::MAX).is_none(), "columns 30..40 are nonzero");
     }
 
     // Montgomery's invariant: the blocks W_i = V_i S_i are pairwise s-orthogonal.
