@@ -8,6 +8,12 @@ use yui_matrix::sparse::{SpMat, SpVec};
 use super::f2mat::F2Mat;
 use super::kernel::kernel_block;
 
+// Both functions find vectors in `ker B` for a sparse matrix `B` over 𝔽₂ (§7 of [Mon95]),
+// by Block Lanczos (see `kernel`):
+//
+// [Mon95] P. L. Montgomery, "A Block Lanczos Algorithm for Finding Dependencies over GF(2)",
+//         EUROCRYPT '95, LNCS 921, pp. 106–120, 1995.
+
 /// Finds `w` with `aᵀw = 0` and `yᵀw = 1`, which proves `y ∉ im a`.
 /// Tries up to `rounds` random starts.
 pub fn find_ng_certificate(a: &SpMat<FF2>, y: &SpVec<FF2>, rounds: usize) -> Option<SpVec<FF2>> {
@@ -18,7 +24,7 @@ pub fn find_ng_certificate(a: &SpMat<FF2>, y: &SpVec<FF2>, rounds: usize) -> Opt
         return None;
     }
 
-    // kernel vectors of b = aᵀ (an n × m matrix)
+    // ker B for B = aᵀ (an n × m matrix)
     let b = F2Mat::from_entries(m, n, entries_of(a)).transpose();
     let y_idx = support(y);
 
@@ -39,7 +45,7 @@ pub fn find_solution(a: &SpMat<FF2>, y: &SpVec<FF2>, rounds: usize) -> Option<Sp
         return Some(SpVec::zero(n));
     }
 
-    // kernel vectors (x, t) of b = [a | y]; those with t = 1 give a·x = y
+    // ker B for B = [a | y]: the vectors (x, t) with t = 1 give a·x = y
     let y_idx = support(y);
     let b = F2Mat::from_entries(m, n + 1, entries_of(a).chain(y_idx.iter().map(|&i| (i, n))));
 
@@ -174,5 +180,21 @@ mod tests {
                 }
             }
         }
+    }
+
+    // a·x through F2Mat, with x as column 5 of a block: entries_of, support and column.
+    #[test]
+    fn conversions() {
+        let mut rng = SplitMix64(22);
+        let (m, n) = (300, 200);
+        let a = rand_mat(&mut rng, (m, n), 0.05);
+        let x = rand_vec(&mut rng, n);
+
+        let sx = support(&x);
+        let xb: Vec<u64> = (0..n).map(|i| u64::from(sx.contains(&i)) << 5).collect();
+        let ab = F2Mat::from_entries(m, n, entries_of(&a)).mul(&xb);
+
+        assert!(ab.iter().all(|r| r & !(1 << 5) == 0));
+        assert_eq!(column(&ab, 5), &a * &x);
     }
 }
