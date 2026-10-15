@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use log::*;
 use num_traits::Zero;
 use yui_core::lc::{LcKey, Lc};
@@ -19,55 +17,54 @@ use super::complex_ext::project;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct G0CalcConfig {
+    pub mode: Mode,
     pub filter_regions: bool,
     pub filter_gens: bool,
     pub accept_if_unique: bool,
     pub try_fast_ng: bool,
-    pub mode: Mode,
     pub max_size: usize,
-    pub max_piv: usize,
-    pub chunk: usize,
 }
 
 impl Default for G0CalcConfig {
     fn default() -> Self {
         Self {
+            mode: Mode::default(),
             filter_regions: true,
             filter_gens: true,
             accept_if_unique: false,
             try_fast_ng: false,
-            mode: Mode::default(),
             max_size: 1_000_000,
-            max_piv: 500_000,
-            chunk: 100_000,
         }
     }
 }
 
 /// The solver for the linear systems over `𝔽₂`.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
     /// Block Lanczos: small memory, randomized but with checked answers.
-    #[default]
-    Lanczos,
-    /// (incremental) PLUQ: deterministic, but may fill in on large systems.
-    Pluq,
+    /// Tries up to `rounds` random starts.
+    Lanczos { rounds: usize },
+    /// PLUQ: deterministic, but may fill in on large systems.
+    /// Large systems are solved incrementally, in steps of `chunk`.
+    Pluq { chunk: usize },
 }
 
-impl FromStr for Mode {
-    type Err = String;
+impl Mode {
+    pub fn lanczos(rounds: usize) -> Self {
+        Mode::Lanczos { rounds }
+    }
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "lanczos" => Ok(Mode::Lanczos),
-            "pluq" => Ok(Mode::Pluq),
-            _ => Err(format!("unknown mode `{s}` (expected `lanczos` or `pluq`)")),
-        }
+    pub fn pluq(chunk: usize) -> Self {
+        Mode::Pluq { chunk }
     }
 }
 
-// note: one Lanczos run almost surely finds a certificate or a solution when one exists.
-const LANCZOS_ROUNDS: usize = 1;
+impl Default for Mode {
+    // note: one Lanczos run almost surely finds a certificate or a solution when one exists.
+    fn default() -> Self {
+        Mode::lanczos(1)
+    }
+}
 
 /// Returned by `find_homologous` when the system exceeds `max_size` and
 /// neither the trivial cycle-membership check nor the U-specialization
@@ -370,9 +367,9 @@ impl G0Calc {
         debug!("solve linear system ...");
 
         let x = match self.config.mode {
-            Mode::Lanczos => {
-                let certify = || find_ng_certificate(a, y, LANCZOS_ROUNDS).is_some();
-                let solve = || find_solution(a, y, LANCZOS_ROUNDS);
+            Mode::Lanczos { rounds } => {
+                let certify = || find_ng_certificate(a, y, rounds).is_some();
+                let solve = || find_solution(a, y, rounds);
 
                 if positive {
                     match solve() {
@@ -387,11 +384,11 @@ impl G0Calc {
                     solve().ok_or(G0CalcError::Resigned)?
                 }
             }
-            Mode::Pluq => {
-                let x = if a.n_rows() < self.config.chunk {
+            Mode::Pluq { chunk } => {
+                let x = if a.n_rows() < chunk {
                     solve_pluq(a, y)
                 } else {
-                    solve_pluq_incr(a, y, self.config.max_piv, self.config.chunk)
+                    solve_pluq_incr(a, y, chunk, chunk)
                 };
                 let Some(x) = x else {
                     return Ok(None);
@@ -448,8 +445,8 @@ impl G0Calc {
 
         // note: only "proven unsolvable" matters here, so Lanczos skips the search for a solution.
         match self.config.mode {
-            Mode::Lanczos => find_ng_certificate(&a_c, &y_c, LANCZOS_ROUNDS).is_some(),
-            Mode::Pluq => matches!(self.find_sol(&a_c, &y_c, false), Ok(None)),
+            Mode::Lanczos { rounds } => find_ng_certificate(&a_c, &y_c, rounds).is_some(),
+            Mode::Pluq { .. } => matches!(self.find_sol(&a_c, &y_c, false), Ok(None)),
         }
     }
 }
@@ -477,12 +474,13 @@ mod tests {
     use crate::g_zero::Corner;
 
     fn config() -> G0CalcConfig {
-        G0CalcConfig { 
-            filter_regions: false, 
-            filter_gens: false, 
-             ..Default::default() 
+        G0CalcConfig {
+            filter_regions: false,
+            filter_gens: false,
+             ..Default::default()
         }
     }
+
 
     #[test]
     fn test_find_homologous_unknot_already_inside() {
