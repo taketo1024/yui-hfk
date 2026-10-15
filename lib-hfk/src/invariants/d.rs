@@ -113,6 +113,19 @@ mod tests {
         }
     }
 
+    // L(p, q) = S³_{p/q}(O) depends only on q mod p, L(p, q) ≅ L(p, q') for qq' ≡ 1 mod p,
+    // and L(p, p − q) ≅ −L(p, q). So the d-invariants agree as multisets, up to sign.
+    #[test]
+    fn lens_homeomorphic() {
+        let ds = |p: i64, q: i64| d_from_v(&[], p, q).into_iter().sorted().collect_vec();
+        let neg = |ds: Vec<Q>| ds.into_iter().map(|d| -d).sorted().collect_vec();
+        for (p, q, q_inv) in [(5, 2, 3), (7, 2, 4), (7, 3, 5), (11, 3, 4), (13, 2, 7)] {
+            assert_eq!(ds(p, q), ds(p, q + p), "L({p}, {q}) = L({p}, {})", q + p);
+            assert_eq!(ds(p, q), ds(p, q_inv), "L({p}, {q}) ≅ L({p}, {q_inv})");
+            assert_eq!(ds(p, p - q), neg(ds(p, q)), "L({p}, {}) ≅ −L({p}, {q})", p - q);
+        }
+    }
+
     // T2,3: V_0 = 1, so d(S³_1) = −2 and d(S³_2) = (1/4 − 2, −1/4).
     #[test]
     fn t2_3() {
