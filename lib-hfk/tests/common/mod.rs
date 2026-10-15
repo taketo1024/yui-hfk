@@ -1,31 +1,13 @@
 //! Shared helpers for the `G0(K)` regression tests.
 
-use std::collections::BTreeSet;
+pub mod types;
+
 use std::time::Instant;
 
-use yui_hfk::g_zero::{self, Corner, Region};
+use yui_hfk::g_zero::Region;
 use yui_hfk::{G0Calc, G0CalcConfig, GridDiagram};
 
-/// `G0(K)` as a set of regions, each a set of corners.
-pub type Regions = BTreeSet<BTreeSet<(isize, isize)>>;
-
-pub fn regions_of(rs: &[Region]) -> Regions {
-    rs.iter()
-        .map(|r| r.corners().iter().map(|c| (c.i, c.j)).collect())
-        .collect()
-}
-
-pub fn to_regions(g0: &Regions) -> Vec<Region> {
-    g0.iter()
-        .map(|r| Region::new(r.iter().map(|&(i, j)| Corner::new(i, j))))
-        .collect()
-}
-
-/// `G0(K*)` from `G0(K)`, by `yui_hfk::g_zero::dual` ([SS] Cor. A.7).
-#[allow(dead_code)] // note: not every test crate uses it
-pub fn dual(g0: &Regions) -> Regions {
-    regions_of(&g_zero::dual(&to_regions(g0)))
-}
+use types::{Regions, regions_of, to_regions};
 
 /// Checks one knot, returning the number of regions left undecided. The known
 /// `genus`, `g4` and `tau` are passed to `G0Calc::init`, and `expected` is passed

@@ -19,39 +19,12 @@
 mod common;
 
 use yui_hfk::g_zero::calc::G0CalcError;
-use yui_hfk::{G0CalcConfig, GridDiagram};
-use common::{Regions, check_g0, run_all};
-
-struct K {
-    name: &'static str,
-    os: &'static [u8],
-    xs: &'static [u8],
-    /// The test uses the mirror of the diagram above.
-    mirror: bool,
-    genus: usize,
-    tau: isize,
-    /// `G0(K)` as a set of regions, each a set of corners.
-    regions: &'static [&'static [(isize, isize)]],
-}
-
-impl K {
-    fn grid_number(&self) -> usize {
-        self.os.len()
-    }
-
-    /// The diagram in the orientation the expected values refer to.
-    fn diagram(&self) -> GridDiagram {
-        let gd = GridDiagram::from_sequences(self.os, self.xs);
-        if self.mirror { gd.rotate90() } else { gd }
-    }
-
-    fn expected(&self) -> Regions {
-        self.regions.iter().map(|r| r.iter().copied().collect()).collect()
-    }
-}
+use yui_hfk::G0CalcConfig;
+use common::run_all;
+use common::types::{K, O, T2_3, T2_3_2_1, T2_5, T3_4, T3_5};
 
 fn check(k: &K) -> usize {
-    check_g0(k.name, &k.diagram(), k.genus, None, None, &k.expected(), G0CalcConfig::default())
+    k.check(G0CalcConfig::default())
 }
 
 fn run_over(label: &str, keep: impl Fn(&K) -> bool) {
@@ -103,48 +76,48 @@ fn tau_all() {
 
 #[rustfmt::skip]
 static KNOTS: &[K] = &[
-    K { name: "8_19", os: &[3,2,1,0,6,5,4], xs: &[6,5,4,3,2,1,0], mirror: false, genus: 3, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
-    K { name: "9_42", os: &[5,6,0,1,7,3,4,2], xs: &[7,3,4,5,2,0,1,6], mirror: true, genus: 2, tau: 0, regions: &[&[(0,0)]] },
-    K { name: "10_124", os: &[4,3,2,1,0,7,6,5], xs: &[7,6,5,4,3,2,1,0], mirror: false, genus: 4, tau: 4, regions: &[&[(0,4)], &[(1,2)], &[(2,1)], &[(4,0)]] },
-    K { name: "10_128", os: &[2,1,0,8,5,4,3,7,6], xs: &[7,4,3,2,1,0,6,5,8], mirror: false, genus: 3, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
-    K { name: "10_132m", os: &[1,0,2,5,4,3,6,7,8], xs: &[4,3,7,1,0,8,2,5,6], mirror: true, genus: 2, tau: 1, regions: &[&[(0,1)], &[(1,0)]] },
-    K { name: "10_136", os: &[8,4,5,0,6,2,3,1,7], xs: &[6,7,3,4,1,8,0,5,2], mirror: true, genus: 2, tau: 0, regions: &[&[(0,0)]] },
-    K { name: "10_139", os: &[6,4,2,1,0,8,7,5,3], xs: &[8,7,6,5,4,3,1,2,0], mirror: false, genus: 4, tau: 4, regions: &[&[(0,4)], &[(1,2)], &[(2,1)], &[(4,0)]] },
-    K { name: "10_145", os: &[0,2,1,4,3,5,6,7,8], xs: &[3,7,5,0,8,2,1,4,6], mirror: true, genus: 2, tau: 2, regions: &[&[(0,2)], &[(1,1)], &[(2,0)]] },
-    K { name: "10_152", os: &[7,5,3,2,9,1,8,0,6,4], xs: &[9,8,7,6,5,4,2,3,1,0], mirror: false, genus: 4, tau: 4, regions: &[&[(0,4)], &[(1,2)], &[(2,1)], &[(4,0)]] },
-    K { name: "10_154", os: &[7,5,3,2,9,1,0,6,8,4], xs: &[9,8,7,6,4,5,2,1,3,0], mirror: false, genus: 3, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
-    K { name: "10_161", os: &[6,4,2,1,8,0,7,5,3], xs: &[8,7,6,5,3,4,1,2,0], mirror: false, genus: 3, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
-    K { name: "11n6", os: &[10,7,8,6,0,3,2,1,9,4,5], xs: &[8,9,4,2,5,10,7,6,3,0,1], mirror: true, genus: 3, tau: 0, regions: &[&[(0,0)]] },
-    K { name: "11n9", os: &[8,9,4,2,1,0,10,7,5,3,6], xs: &[10,7,8,6,5,4,3,1,2,9,0], mirror: false, genus: 4, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
-    K { name: "11n12", os: &[9,8,7,1,2,0,4,6,3,5], xs: &[7,6,4,5,9,3,1,2,8,0], mirror: false, genus: 2, tau: 1, regions: &[&[(0,1)], &[(1,0)]] },
-    K { name: "11n19", os: &[6,0,1,2,4,5,3,7,8], xs: &[2,3,7,8,0,1,6,4,5], mirror: true, genus: 3, tau: 1, regions: &[&[(0,1)], &[(1,0)]] },
-    K { name: "11n20", os: &[7,8,4,5,0,6,9,3,1,2], xs: &[9,6,7,3,4,1,2,0,5,8], mirror: true, genus: 2, tau: 0, regions: &[&[(0,0)]] },
-    K { name: "11n24", os: &[9,8,7,1,0,2,6,4,3,5], xs: &[7,6,4,5,3,9,1,0,8,2], mirror: false, genus: 3, tau: 0, regions: &[&[(0,0)]] },
-    K { name: "11n27", os: &[7,5,2,1,0,6,9,8,4,3], xs: &[9,8,7,4,3,2,5,1,0,6], mirror: false, genus: 4, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
-    K { name: "11n31", os: &[8,9,4,1,2,0,10,5,7,3,6], xs: &[10,7,8,6,5,4,3,1,2,9,0], mirror: false, genus: 3, tau: 2, regions: &[&[(0,2)], &[(1,1)], &[(2,0)]] },
-    K { name: "11n34", os: &[2,0,1,4,7,5,6,3,8,9,10], xs: &[5,3,9,0,2,1,10,7,4,6,8], mirror: true, genus: 3, tau: 0, regions: &[&[(0,0)]] },
-    K { name: "11n38", os: &[3,2,4,0,8,1,5,7,6], xs: &[7,5,1,3,2,6,0,4,8], mirror: false, genus: 2, tau: 0, regions: &[&[(0,0)]] },
-    K { name: "11n45", os: &[8,6,4,3,5,0,1,10,7,9,2], xs: &[10,9,8,7,1,2,6,3,0,4,5], mirror: false, genus: 3, tau: 0, regions: &[&[(0,0)]] },
-    K { name: "11n57", os: &[7,8,4,2,1,0,9,6,5,3], xs: &[9,6,7,5,4,3,2,1,0,8], mirror: false, genus: 4, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
-    K { name: "11n61", os: &[2,1,8,0,9,5,4,3,6,7], xs: &[5,4,3,6,2,1,0,7,8,9], mirror: false, genus: 4, tau: 2, regions: &[&[(0,1), (1,0)], &[(0,2)], &[(2,0)]] },
-    K { name: "11n70", os: &[9,8,7,6,1,0,2,5,4,3], xs: &[7,6,5,2,4,3,9,1,0,8], mirror: false, genus: 3, tau: 1, regions: &[&[(0,1)], &[(1,0)]] },
-    K { name: "11n77", os: &[8,6,4,3,10,2,1,7,0,9,5], xs: &[10,9,8,7,6,5,3,2,4,1,0], mirror: false, genus: 4, tau: 4, regions: &[&[(0,4)], &[(1,2)], &[(2,1)], &[(4,0)]] },
-    K { name: "11n79", os: &[8,1,0,2,5,4,3,7,6,9], xs: &[2,4,3,9,1,0,6,5,8,7], mirror: false, genus: 2, tau: 0, regions: &[&[(0,0)]] },
-    K { name: "11n80", os: &[10,7,8,6,0,3,1,2,9,4,5], xs: &[8,9,4,2,5,10,6,7,3,0,1], mirror: true, genus: 3, tau: 1, regions: &[&[(0,1)], &[(1,0)]] },
-    K { name: "11n81", os: &[9,8,1,0,7,6,3,2,5,4], xs: &[6,3,5,4,2,1,9,8,0,7], mirror: false, genus: 4, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
-    K { name: "11n88", os: &[7,5,4,2,0,9,8,1,3,6], xs: &[9,8,7,6,5,3,2,4,0,1], mirror: false, genus: 4, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
-    K { name: "11n92", os: &[9,8,7,1,2,0,6,3,4,5], xs: &[7,6,3,4,9,5,1,8,0,2], mirror: true, genus: 3, tau: 0, regions: &[&[(0,0)]] },
-    K { name: "11n96", os: &[1,8,6,0,9,4,3,2,5,7], xs: &[4,3,2,5,1,0,6,7,8,9], mirror: false, genus: 3, tau: 0, regions: &[&[(0,0)]] },
-    K { name: "11n102", os: &[5,0,8,2,1,3,4,7,6,9], xs: &[1,4,3,5,6,0,9,2,8,7], mirror: true, genus: 2, tau: 1, regions: &[&[(0,1)], &[(1,0)]] },
-    K { name: "11n104", os: &[7,8,2,1,9,0,6,5,4,3], xs: &[9,6,7,5,4,3,1,2,0,8], mirror: false, genus: 4, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
-    K { name: "11n111", os: &[7,5,3,2,0,9,4,8,6,1], xs: &[9,8,7,6,5,1,0,2,3,4], mirror: false, genus: 3, tau: 1, regions: &[&[(0,1)], &[(1,0)]] },
-    K { name: "11n126", os: &[7,5,3,9,2,1,0,8,6,4], xs: &[9,8,6,4,7,5,3,2,1,0], mirror: false, genus: 3, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
-    K { name: "11n133", os: &[7,8,2,1,0,9,5,4,6,3], xs: &[9,5,6,4,3,2,1,7,0,8], mirror: false, genus: 4, tau: 2, regions: &[&[(0,1), (1,0)], &[(0,2)], &[(2,0)]] },
-    K { name: "11n135", os: &[7,8,2,9,0,6,5,4,3,1], xs: &[9,6,7,4,3,1,2,0,8,5], mirror: false, genus: 3, tau: 2, regions: &[&[(0,2)], &[(1,1)], &[(2,0)]] },
-    K { name: "11n138", os: &[9,8,7,6,0,2,1,4,3,5], xs: &[7,6,4,1,3,9,5,0,8,2], mirror: false, genus: 2, tau: 0, regions: &[&[(0,0)]] },
-    K { name: "11n143", os: &[7,5,3,6,9,0,2,1,8,4], xs: &[9,8,7,1,4,5,6,3,2,0], mirror: false, genus: 3, tau: 0, regions: &[&[(0,0)]] },
-    K { name: "11n145", os: &[9,8,7,6,0,1,5,2,3,4], xs: &[7,5,3,2,4,9,0,8,6,1], mirror: true, genus: 3, tau: 0, regions: &[&[(0,0)]] },
-    K { name: "11n151", os: &[10,9,8,3,6,1,0,7,4,2,5], xs: &[8,6,4,7,10,5,3,2,1,9,0], mirror: false, genus: 2, tau: 1, regions: &[&[(0,1)], &[(1,0)]] },
-    K { name: "11n152", os: &[10,9,8,3,6,5,0,7,4,2,1], xs: &[8,6,4,7,10,2,3,1,0,9,5], mirror: false, genus: 3, tau: 1, regions: &[&[(0,1)], &[(1,0)]] },
-    K { name: "11n183", os: &[7,5,2,3,1,9,0,8,6,4], xs: &[9,8,6,7,4,2,5,3,1,0], mirror: false, genus: 3, tau: 3, regions: &[&[(0,3)], &[(1,1)], &[(3,0)]] },
+    K { name: "8_19", os: &[3,2,1,0,6,5,4], xs: &[6,5,4,3,2,1,0], mirror: false, g: 3, g4: 3, tau: 3, g0_type: T3_4 },
+    K { name: "9_42", os: &[5,6,0,1,7,3,4,2], xs: &[7,3,4,5,2,0,1,6], mirror: true, g: 2, g4: 1, tau: 0, g0_type: O },
+    K { name: "10_124", os: &[4,3,2,1,0,7,6,5], xs: &[7,6,5,4,3,2,1,0], mirror: false, g: 4, g4: 4, tau: 4, g0_type: T3_5 },
+    K { name: "10_128", os: &[2,1,0,8,5,4,3,7,6], xs: &[7,4,3,2,1,0,6,5,8], mirror: false, g: 3, g4: 3, tau: 3, g0_type: T3_4 },
+    K { name: "10_132m", os: &[1,0,2,5,4,3,6,7,8], xs: &[4,3,7,1,0,8,2,5,6], mirror: true, g: 2, g4: 1, tau: 1, g0_type: T2_3 },
+    K { name: "10_136", os: &[8,4,5,0,6,2,3,1,7], xs: &[6,7,3,4,1,8,0,5,2], mirror: true, g: 2, g4: 1, tau: 0, g0_type: O },
+    K { name: "10_139", os: &[6,4,2,1,0,8,7,5,3], xs: &[8,7,6,5,4,3,1,2,0], mirror: false, g: 4, g4: 4, tau: 4, g0_type: T3_5 },
+    K { name: "10_145", os: &[0,2,1,4,3,5,6,7,8], xs: &[3,7,5,0,8,2,1,4,6], mirror: true, g: 2, g4: 2, tau: 2, g0_type: T2_5 },
+    K { name: "10_152", os: &[7,5,3,2,9,1,8,0,6,4], xs: &[9,8,7,6,5,4,2,3,1,0], mirror: false, g: 4, g4: 4, tau: 4, g0_type: T3_5 },
+    K { name: "10_154", os: &[7,5,3,2,9,1,0,6,8,4], xs: &[9,8,7,6,4,5,2,1,3,0], mirror: false, g: 3, g4: 3, tau: 3, g0_type: T3_4 },
+    K { name: "10_161", os: &[6,4,2,1,8,0,7,5,3], xs: &[8,7,6,5,3,4,1,2,0], mirror: false, g: 3, g4: 3, tau: 3, g0_type: T3_4 },
+    K { name: "11n6", os: &[10,7,8,6,0,3,2,1,9,4,5], xs: &[8,9,4,2,5,10,7,6,3,0,1], mirror: true, g: 3, g4: 1, tau: 0, g0_type: O },
+    K { name: "11n9", os: &[8,9,4,2,1,0,10,7,5,3,6], xs: &[10,7,8,6,5,4,3,1,2,9,0], mirror: false, g: 4, g4: 3, tau: 3, g0_type: T3_4 },
+    K { name: "11n12", os: &[9,8,7,1,2,0,4,6,3,5], xs: &[7,6,4,5,9,3,1,2,8,0], mirror: false, g: 2, g4: 1, tau: 1, g0_type: T2_3 },
+    K { name: "11n19", os: &[6,0,1,2,4,5,3,7,8], xs: &[2,3,7,8,0,1,6,4,5], mirror: true, g: 3, g4: 2, tau: 1, g0_type: T2_3 },
+    K { name: "11n20", os: &[7,8,4,5,0,6,9,3,1,2], xs: &[9,6,7,3,4,1,2,0,5,8], mirror: true, g: 2, g4: 1, tau: 0, g0_type: O },
+    K { name: "11n24", os: &[9,8,7,1,0,2,6,4,3,5], xs: &[7,6,4,5,3,9,1,0,8,2], mirror: false, g: 3, g4: 1, tau: 0, g0_type: O },
+    K { name: "11n27", os: &[7,5,2,1,0,6,9,8,4,3], xs: &[9,8,7,4,3,2,5,1,0,6], mirror: false, g: 4, g4: 3, tau: 3, g0_type: T3_4 },
+    K { name: "11n31", os: &[8,9,4,1,2,0,10,5,7,3,6], xs: &[10,7,8,6,5,4,3,1,2,9,0], mirror: false, g: 3, g4: 2, tau: 2, g0_type: T2_5 },
+    K { name: "11n34", os: &[2,0,1,4,7,5,6,3,8,9,10], xs: &[5,3,9,0,2,1,10,7,4,6,8], mirror: true, g: 3, g4: 1, tau: 0, g0_type: O },
+    K { name: "11n38", os: &[3,2,4,0,8,1,5,7,6], xs: &[7,5,1,3,2,6,0,4,8], mirror: false, g: 2, g4: 1, tau: 0, g0_type: O },
+    K { name: "11n45", os: &[8,6,4,3,5,0,1,10,7,9,2], xs: &[10,9,8,7,1,2,6,3,0,4,5], mirror: false, g: 3, g4: 1, tau: 0, g0_type: O },
+    K { name: "11n57", os: &[7,8,4,2,1,0,9,6,5,3], xs: &[9,6,7,5,4,3,2,1,0,8], mirror: false, g: 4, g4: 3, tau: 3, g0_type: T3_4 },
+    K { name: "11n61", os: &[2,1,8,0,9,5,4,3,6,7], xs: &[5,4,3,6,2,1,0,7,8,9], mirror: false, g: 4, g4: 2, tau: 2, g0_type: T2_3_2_1 },
+    K { name: "11n70", os: &[9,8,7,6,1,0,2,5,4,3], xs: &[7,6,5,2,4,3,9,1,0,8], mirror: false, g: 3, g4: 2, tau: 1, g0_type: T2_3 },
+    K { name: "11n77", os: &[8,6,4,3,10,2,1,7,0,9,5], xs: &[10,9,8,7,6,5,3,2,4,1,0], mirror: false, g: 4, g4: 4, tau: 4, g0_type: T3_5 },
+    K { name: "11n79", os: &[8,1,0,2,5,4,3,7,6,9], xs: &[2,4,3,9,1,0,6,5,8,7], mirror: false, g: 2, g4: 1, tau: 0, g0_type: O },
+    K { name: "11n80", os: &[10,7,8,6,0,3,1,2,9,4,5], xs: &[8,9,4,2,5,10,6,7,3,0,1], mirror: true, g: 3, g4: 1, tau: 1, g0_type: T2_3 },
+    K { name: "11n81", os: &[9,8,1,0,7,6,3,2,5,4], xs: &[6,3,5,4,2,1,9,8,0,7], mirror: false, g: 4, g4: 3, tau: 3, g0_type: T3_4 },
+    K { name: "11n88", os: &[7,5,4,2,0,9,8,1,3,6], xs: &[9,8,7,6,5,3,2,4,0,1], mirror: false, g: 4, g4: 3, tau: 3, g0_type: T3_4 },
+    K { name: "11n92", os: &[9,8,7,1,2,0,6,3,4,5], xs: &[7,6,3,4,9,5,1,8,0,2], mirror: true, g: 3, g4: 1, tau: 0, g0_type: O },
+    K { name: "11n96", os: &[1,8,6,0,9,4,3,2,5,7], xs: &[4,3,2,5,1,0,6,7,8,9], mirror: false, g: 3, g4: 1, tau: 0, g0_type: O },
+    K { name: "11n102", os: &[5,0,8,2,1,3,4,7,6,9], xs: &[1,4,3,5,6,0,9,2,8,7], mirror: true, g: 2, g4: 1, tau: 1, g0_type: T2_3 },
+    K { name: "11n104", os: &[7,8,2,1,9,0,6,5,4,3], xs: &[9,6,7,5,4,3,1,2,0,8], mirror: false, g: 4, g4: 3, tau: 3, g0_type: T3_4 },
+    K { name: "11n111", os: &[7,5,3,2,0,9,4,8,6,1], xs: &[9,8,7,6,5,1,0,2,3,4], mirror: false, g: 3, g4: 1, tau: 1, g0_type: T2_3 },
+    K { name: "11n126", os: &[7,5,3,9,2,1,0,8,6,4], xs: &[9,8,6,4,7,5,3,2,1,0], mirror: false, g: 3, g4: 3, tau: 3, g0_type: T3_4 },
+    K { name: "11n133", os: &[7,8,2,1,0,9,5,4,6,3], xs: &[9,5,6,4,3,2,1,7,0,8], mirror: false, g: 4, g4: 2, tau: 2, g0_type: T2_3_2_1 },
+    K { name: "11n135", os: &[7,8,2,9,0,6,5,4,3,1], xs: &[9,6,7,4,3,1,2,0,8,5], mirror: false, g: 3, g4: 2, tau: 2, g0_type: T2_5 },
+    K { name: "11n138", os: &[9,8,7,6,0,2,1,4,3,5], xs: &[7,6,4,1,3,9,5,0,8,2], mirror: false, g: 2, g4: 1, tau: 0, g0_type: O },
+    K { name: "11n143", os: &[7,5,3,6,9,0,2,1,8,4], xs: &[9,8,7,1,4,5,6,3,2,0], mirror: false, g: 3, g4: 1, tau: 0, g0_type: O },
+    K { name: "11n145", os: &[9,8,7,6,0,1,5,2,3,4], xs: &[7,5,3,2,4,9,0,8,6,1], mirror: true, g: 3, g4: 1, tau: 0, g0_type: O },
+    K { name: "11n151", os: &[10,9,8,3,6,1,0,7,4,2,5], xs: &[8,6,4,7,10,5,3,2,1,9,0], mirror: false, g: 2, g4: 1, tau: 1, g0_type: T2_3 },
+    K { name: "11n152", os: &[10,9,8,3,6,5,0,7,4,2,1], xs: &[8,6,4,7,10,2,3,1,0,9,5], mirror: false, g: 3, g4: 1, tau: 1, g0_type: T2_3 },
+    K { name: "11n183", os: &[7,5,2,3,1,9,0,8,6,4], xs: &[9,8,6,7,4,2,5,3,1,0], mirror: false, g: 3, g4: 3, tau: 3, g0_type: T3_4 },
 ];
