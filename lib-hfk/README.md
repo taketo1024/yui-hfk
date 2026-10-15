@@ -15,9 +15,10 @@ one builds a chain complex whose homology recovers `HFK(K)`, with no analysis in
 ## What it computes
 
 - `ĤFK(K)` — the knot Floer homology, bigraded by Maslov and Alexander degree.
-- `GH~`, `GH^`, `GH⁻` — the grid homology variants.
 - `g(K)` — the Seifert genus, read off from the top Alexander degree.
 - `τ(K)` — the Ozsváth–Szabó concordance invariant.
+- `Υ_K` — the Ozsváth–Stipsicz–Szabó invariant \[OSS17\], a piecewise linear function on `[0, 2]`.
+- `d(S³_{p/q}(K))` — the `d`-invariants of the Dehn surgeries along `K` \[OS03a\].
 - `𝒢₀(K)` — the concordance invariant of \[Sat23\], a finite set of closed regions in `ℤ²`
   from which `τ(K)`, `Υ_K` and the `d`-invariants of Dehn surgeries can be read.
 
@@ -50,10 +51,15 @@ one builds a chain complex whose homology recovers `HFK(K)`, with no analysis in
 - **`genus(&gd)`** — the Seifert genus `g(K)`, the top Alexander degree of `GH~(G)`.
 - **`tau(&gd)`** — the Ozsváth–Szabó invariant `τ(K)`. `tau_with_config` also accepts the
   genus and the 4-genus when they are known, and a `G0CalcConfig`.
+- **`upsilon(&gd)`** — `Υ_K` as an `Upsilon`, a piecewise linear function with rational
+  vertices, read from `𝒢₀(K)` (\[SS\] Thm 2.20). `Upsilon::from_g0` reads it from a known `𝒢₀(K)`.
+- **`d(&gd, p, q)`** — the `d`-invariants `d(S³_{p/q}(K), i)` for `0 ≤ i < |p|`, from the
+  `V_k` of \[NW15\], which are computed directly from the regions `R(m, k+m)`.
 - **`G0Calc`** — computes `𝒢₀(K)` as a list of `Region`s. A `Region` is a finite union of
   quadrants `(−∞, i] × (−∞, j]`, stored as an antichain of `Corner`s. `G0CalcConfig`
   bounds the size of the linear systems. Regions that could not be decided within
-  these bounds are reported by `resigned()`, and `tau` then returns `Err(G0CalcError::Resigned)`.
+  these bounds are reported by `resigned()`, and `tau`, `upsilon` and `d` then return
+  `Err(G0CalcError::Resigned)`.
 
 ## Example
 
@@ -87,7 +93,9 @@ yhf setup
 ## CLI
 
 A command-line front-end ships in the sibling crate [`yhf`](https://crates.io/crates/yhf):
-`yhf hfk 3_1`, `yhf tau 3_1`, `yhf g0 3_1`, etc.
+`yhf hfk 3_1`, `yhf tau 3_1`, `yhf upsilon 3_1`, `yhf d 3_1 5/2`, `yhf g0 3_1`, etc.
+See its [README](https://github.com/taketo1024/yui-hfk/blob/main/bin-yhf/README.md) for the
+commands and examples.
 
 ## Tests
 
@@ -107,6 +115,11 @@ Expected values and grid diagrams are inlined, so they need no external data.
   *On combinatorial link Floer homology*, Geom. Topol. 11 (2007).
 - \[Book\] P. Ozsváth, A. Stipsicz, Z. Szabó,
   *Grid Homology for Knots and Links*, AMS Math. Surveys and Monographs 208 (2015).
+- \[NW15\] Y. Ni, Z. Wu, *Cosmetic surgeries on knots in S³*, J. Reine Angew. Math. 706 (2015).
+- \[OS03a\] P. Ozsváth, Z. Szabó, *Absolutely graded Floer homologies and intersection forms
+  for four-manifolds with boundary*, Adv. Math. 173 (2003).
+- \[OSS17\] P. Ozsváth, A. Stipsicz, Z. Szabó, *Concordance homomorphisms from knot Floer
+  homology*, Adv. Math. 315 (2017).
 - \[Sat23\] K. Sato, *A full-twist inequality for the ν⁺-invariant*, and the `𝒢₀` invariant.
 - \[SS\] T. Sano, K. Sato, *An algorithm for computing the Υ-invariant and the
   d-invariants of Dehn surgeries*, [arXiv:2002.09210](https://arxiv.org/abs/2002.09210).

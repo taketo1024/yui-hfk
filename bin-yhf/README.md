@@ -28,11 +28,13 @@ $ yhf setup
 Usage: yhf <COMMAND> <KNOT> [OPTIONS]
 
 Commands:
-  hfk    the knot Floer homology ĤFK
-  gh     the grid homology GH~, GH^ or GH⁻ (-t tilde|hat|minus)
-  tau    the Ozsváth–Szabó invariant τ
-  g0     the invariant 𝒢₀
-  setup  download grid diagrams from KnotInfo into the data directory
+  hfk      the knot Floer homology ĤFK
+  gh       the grid homology GH~, GH^ or GH⁻ (-t tilde|hat|minus)
+  tau      the Ozsváth–Szabó invariant τ
+  upsilon  the Ozsváth–Stipsicz–Szabó invariant Υ
+  d        the d-invariants of the p/q-surgery (yhf d <KNOT> <P/Q>)
+  g0       the invariant 𝒢₀
+  setup    download grid diagrams from KnotInfo into the data directory
 ```
 
 `<KNOT>` is a knot name such as `3_1`, looked up in the data directory. A grid diagram can
@@ -42,8 +44,12 @@ the computation. Run `yhf <COMMAND> --help` for all options.
 
 ## Examples
 
+### Knot Floer homology `ĤFK`
+
 Command `hfk` computes the ranks of `ĤFK(K)` over `𝔽₂`, bigraded by the Maslov degree `M`
-and the Alexander degree `A`.
+and the Alexander degree `A`. For a grid diagram `G` of `K` with grid number `n`, it is
+computed from `GH~(G) ≅ ĤFK(K) ⊗ W^{⊗(n−1)}`, where `W` is 2-dimensional, together with the
+symmetry `ĤFK_{i,j}(K) ≅ ĤFK_{i−2j,−j}(K)`.
 
 ```sh
 $ yhf hfk 3_1
@@ -67,7 +73,11 @@ $ yhf hfk "[[2,1,0,4,3],[4,3,2,1,0]]"
  -1   1   .   . 
 ```
 
-Command `gh` computes the grid homology. The default type is `hat`.
+### Grid homology `GH`
+
+Command `gh` computes the grid homology. The default type is `hat`. This command is not
+meant for practical use: `GH^` is computed directly, so it takes more time than `ĤFK` by
+`hfk`.
 
 ```sh
 $ yhf gh 3_1
@@ -80,6 +90,8 @@ GH^ (Hat):
  -1   F₂  .   . 
 ```
 
+### The `τ`-invariant
+
 Command `tau` computes `τ(K)`.
 
 ```sh
@@ -88,6 +100,29 @@ $ yhf tau 3_1
 $ yhf tau 3_1 -m
 -1
 ```
+
+### The `Υ`-invariant
+
+Command `upsilon` computes `Υ_K` from `𝒢₀(K)`, as the piecewise linear function on `[0, 2]`
+through the listed vertices `(t, Υ_K(t))`.
+
+```sh
+$ yhf upsilon 3_1
+PL[(0, 0), (1, -1), (2, 0)]
+```
+
+### The `d`-invariants of Dehn surgeries
+
+Command `d` computes the `d`-invariants `d(S³_{p/q}(K), i)` for `0 ≤ i < |p|`, one line
+for each `i`.
+
+```sh
+$ yhf d 3_1 2
+0: -7/4
+1: -1/4
+```
+
+### The invariant `𝒢₀`
 
 Command `g0` computes `𝒢₀(K)`. Each line is one region: `R(i, j)` is the quadrant
 `(−∞, i] × (−∞, j]`, and `R[(i₁, j₁), (i₂, j₂), …]` is the union of such quadrants.
@@ -98,8 +133,11 @@ R(0, 1)
 R(1, 0)
 ```
 
-For `tau` and `g0`, the option `-G/--g4` supplies a known value of the 4-genus, and `g0`
-also accepts a known value of `τ` by `-t/--tau`. These prune the candidate regions. `--max-size` caps the size of the linear systems that are attempted.
+### Options
+
+For `tau`, `upsilon`, `d` and `g0`, the option `-G/--g4` supplies a known value of the
+4-genus, and `upsilon` and `g0` also accept a known value of `τ` by `-t/--tau`. These prune
+the candidate regions. `--max-size` caps the size of the linear systems that are attempted.
 
 ## Data directory
 
