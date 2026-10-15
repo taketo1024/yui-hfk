@@ -1,5 +1,5 @@
 use log::error;
-use yui_hfk::tau::tau_with_config;
+use yui_hfk::invariants::tau::tau_with_config;
 use yui_hfk::G0CalcConfig;
 use yui_hfk::g_zero::Mode;
 use crate::app::{AppArgs, utils::load_diagram};
