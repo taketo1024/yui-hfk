@@ -1,6 +1,6 @@
-use yui_hfk::{G0Calc, G0CalcConfig};
-use yui_hfk::g_zero::{Candidates, Mode, Region};
-use crate::app::{AppArgs, utils::load_diagram};
+use yui_hfk::G0Calc;
+use yui_hfk::g_zero::{Candidates, Region};
+use crate::app::{AppArgs, ConfigArgs, utils::load_diagram};
 
 #[derive(Clone, Debug, clap::Args)]
 pub struct Args {
@@ -32,37 +32,8 @@ pub struct Args {
     #[arg(long = "expect", value_name = "REGION")]
     pub expect: Vec<Region>,
 
-    /// Skip HFK-based region filtering
-    #[arg(long)]
-    pub no_filter_regions: bool,
-
-    /// Skip generator filtering
-    #[arg(long)]
-    pub no_filter_gens: bool,
-
-    /// Don't auto-accept when only one candidate region remains
-    #[arg(long)]
-    pub no_accept_if_unique: bool,
-
-    /// Try the U-specialization NG fast-path on large systems
-    #[arg(long)]
-    pub try_fast_ng: bool,
-
-    /// Solver for the linear systems: lanczos or pluq
-    #[arg(long, default_value = "lanczos")]
-    pub mode: Mode,
-
-    /// Resign on linear systems whose dimension exceeds this size
-    #[arg(long)]
-    pub max_size: Option<usize>,
-
-    /// Cap on the sparse pre-PLUQ pivot count in the linear solver
-    #[arg(long)]
-    pub max_piv: Option<usize>,
-
-    /// Schur-complement chunk size in the incremental solver
-    #[arg(long)]
-    pub chunk: Option<usize>,
+    #[command(flatten)]
+    pub config: ConfigArgs,
 
     /// Log level: 0=off, 1=info, 2=debug, 3=trace
     #[arg(long, default_value = "0")]
@@ -79,18 +50,7 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
     let gd = load_diagram(&args.knot)?;
     let gd = if args.mirror { gd.rotate90() } else { gd };
 
-    let defaults = G0CalcConfig::default();
-    let config = G0CalcConfig {
-        filter_regions: !args.no_filter_regions,
-        filter_gens:    !args.no_filter_gens,
-        accept_if_unique: !args.no_accept_if_unique,
-        try_fast_ng:    args.try_fast_ng,
-        mode:           args.mode,
-        max_size:       args.max_size.unwrap_or(defaults.max_size),
-        max_piv:        args.max_piv.unwrap_or(defaults.max_piv),
-        chunk:          args.chunk.unwrap_or(defaults.chunk),
-    };
-
+    let config = args.config.config();
     let mut calc = match &args.region {
         Some(r) => {
             let mut candidates = Candidates::new();
