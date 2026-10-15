@@ -8,13 +8,13 @@
 //! result came from a mirrored diagram.
 //!
 //! With `G0CalcConfig::default()`, every region of every knot is decided, except
-//! for 11n31, whose remaining systems exceed `max_size`. It is fully verified with
-//! `max_size = 2_000_000` and `try_fast_ng`.
+//! for 11n31, whose remaining systems exceed `max_size` and are left undecided in
+//! `g0_all`. `g0_11n31` verifies it fully with `max_size = 2_000_000` and `try_fast_ng`.
 //!
 //! Cost is governed by the grid number (generator enumeration is O(n!)), so
 //! only the smallest grids run by default. For the rest:
 //!
-//!     cargo test --release --test thick_nonslice_11 -- --ignored --nocapture
+//!     cargo test --release --test thick_11 -- --ignored --nocapture
 
 mod common;
 
@@ -40,6 +40,14 @@ fn g0_small_grids() {
 #[ignore = "slow: run with --release --ignored"]
 fn g0_all() {
     run_over("g0_all", |_| true);
+}
+
+#[test]
+#[ignore = "slow: run with --release --ignored"]
+fn g0_11n31() {
+    let k = KNOTS.iter().find(|k| k.name == "11n31").expect("no such knot");
+    let config = G0CalcConfig { try_fast_ng: true, max_size: 2_000_000, ..Default::default() };
+    run_all("g0_11n31", &[k], |k| k.name, |k| k.check(config));
 }
 
 // note: tau comes from a separate search, so it is checked against the same knots.

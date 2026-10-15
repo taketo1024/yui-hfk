@@ -2,7 +2,7 @@
 //! non-slice and have `tau = 0`: 14 of the 44 knots of Table 1 in [SS], of grid number
 //! 8 to 11. All of them have `G0(K) = {R(0,0)}`, the `G0`-type `O` of the unknot.
 //!
-//! The grid diagrams are inlined, as in `thick_nonslice_11.rs`. The type `O` is self-dual,
+//! The grid diagrams are inlined, as in `thick_11.rs`. The type `O` is self-dual,
 //! so the mirror has the same `G0`. Where `mirror` is set, the test uses the mirror of the
 //! diagram recorded here, which has no candidate region to reject.
 //!
