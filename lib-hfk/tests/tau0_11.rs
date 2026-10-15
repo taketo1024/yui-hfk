@@ -30,7 +30,7 @@ fn run_over(label: &str, keep: impl Fn(&K) -> bool) {
 
 #[test]
 fn g0_small_grids() {
-    run_over("g0_small_grids", |k| k.grid_number() <= 8);
+    run_over("g0_small_grids", |k| k.grid_number() <= 9);
 }
 
 #[test]
