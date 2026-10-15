@@ -49,7 +49,17 @@ pub fn tau_with_config(gd: &GridDiagram, g: Option<usize>, g4: Option<usize>, co
     }
 }
 
-fn compute_tau(gd: &GridDiagram, g: usize, g4: Option<usize>, config: G0CalcConfig) -> Result<isize, G0CalcError> { 
+/// `τ(K) = min{ m ∈ ℤ | ∃R ∈ G0(K), R ⊂ {i ≤ −1} ∪ R(0, m) }` ([SS] Thm 2.20), where `R` is
+/// included iff every corner `(i, j)` of `R` has `i ≤ −1`, or `i = 0` and `j ≤ m`.
+pub fn tau_from_g0(g0: &[Region]) -> isize {
+    g0.iter()
+        .filter(|r| r.corners().iter().all(|c| c.i <= 0))
+        .map(|r| r.corners().iter().filter(|c| c.i == 0).map(|c| c.j).max().unwrap_or(isize::MIN))
+        .min()
+        .expect("a region of G0 lies in {i ≤ 0}")
+}
+
+fn compute_tau(gd: &GridDiagram, g: usize, g4: Option<usize>, config: G0CalcConfig) -> Result<isize, G0CalcError> {
     let mut candidates = Candidates::new();
     let t = g4.unwrap_or(g) as isize;
 
@@ -85,6 +95,7 @@ fn validate(g4: Option<usize>, tau: isize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::g_zero::dual;
 
     #[test]
     fn test_unknot() {
@@ -150,5 +161,35 @@ mod tests {
     #[test]
     fn test_figure8_mirror() {
         assert_eq!(tau(&GridDiagram::figure8().rotate90()), Ok(0));
+    }
+
+    fn g0(ty: &[&[(isize, isize)]]) -> Vec<Region> {
+        ty.iter().map(|r| Region::new(r.iter().map(|&(i, j)| Corner::new(i, j)))).collect()
+    }
+
+    // τ(K) of Table 2 in [SS] (v2), and τ(K*) = −τ(K) with G0(K*) = dual(G0(K)).
+    #[test]
+    fn test_tau_from_g0_table_2() {
+        let table: [(&[&[(isize, isize)]], isize); 7] = [
+            (&[&[(0, 0)]], 0),
+            (&[&[(0, 1)], &[(1, 0)]], 1),
+            (&[&[(0, 2)], &[(1, 1)], &[(2, 0)]], 2),
+            (&[&[(0, 2)], &[(0, 1), (1, 0)], &[(2, 0)]], 2),
+            (&[&[(0, 3)], &[(1, 2)], &[(2, 1)], &[(3, 0)]], 3),
+            (&[&[(0, 3)], &[(1, 1)], &[(3, 0)]], 3),
+            (&[&[(0, 4)], &[(1, 2)], &[(2, 1)], &[(4, 0)]], 4),
+        ];
+        for (ty, t) in table {
+            assert_eq!(tau_from_g0(&g0(ty)), t, "{ty:?}");
+            assert_eq!(tau_from_g0(&dual(&g0(ty))), -t, "{ty:?}: mirror");
+        }
+    }
+
+    #[test]
+    fn test_tau_from_g0_5_1() {
+        let gd = GridDiagram::test_data("5_1").unwrap();
+        let mut calc = G0Calc::init(&gd, None, None, None, G0CalcConfig::default());
+        calc.run();
+        assert_eq!(Ok(tau_from_g0(&calc.g0().unwrap())), tau(&gd));
     }
 }
