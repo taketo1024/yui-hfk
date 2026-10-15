@@ -6,6 +6,7 @@ use super::{Corner, Region, Screen};
 pub struct Candidates {
     pub regions: Vec<Region>,
     pub accepted: Vec<Region>,
+    pub rejected: Vec<Region>,
     pub resigned: Vec<Region>,
     /// Regions expected to be realizable, not necessarily minimal (up to transposition).
     /// Those among `regions` come first. An expected region leaves the list once settled:
@@ -15,7 +16,7 @@ pub struct Candidates {
 
 impl Candidates {
     pub fn new() -> Self {
-        Candidates { regions: vec![], accepted: vec![], resigned: vec![], expected: vec![] }
+        Candidates { regions: vec![], accepted: vec![], rejected: vec![], resigned: vec![], expected: vec![] }
     }
 
     /// Generates all combinatorial candidates for genus g.
@@ -74,7 +75,7 @@ impl Candidates {
             }
         }
 
-        Candidates { regions, accepted: vec![], resigned: vec![], expected: vec![] }
+        Candidates { regions, accepted: vec![], rejected: vec![], resigned: vec![], expected: vec![] }
     }
 
     /// Removes symmetric pairs {R, Rᵀ} in place, keeping the one with the
@@ -147,6 +148,14 @@ impl Candidates {
     /// `r` or `rᵀ` from `regions` (they are automatically unrealizable), and from `expected`.
     pub fn reject(&mut self, r: &Region) {
         let rt = r.transposed();
+
+        // Keep only maximal rejected regions: drop those that r or rᵀ now contain.
+        self.rejected.retain(|s| !r.includes(s) && !rt.includes(s));
+        self.rejected.push(r.clone());
+        if rt != *r {
+            self.rejected.push(rt.clone());
+        }
+
         self.regions.retain(|s| !r.includes(s) && !rt.includes(s));
         self.expected.retain(|e| {
             let unrealizable = r.includes(e) || rt.includes(e);
@@ -238,7 +247,7 @@ mod tests {
     }
 
     fn make_candidates(regions: &[Region]) -> Candidates {
-        Candidates { regions: regions.to_vec(), accepted: vec![], resigned: vec![], expected: vec![] }
+        Candidates { regions: regions.to_vec(), accepted: vec![], rejected: vec![], resigned: vec![], expected: vec![] }
     }
 
     #[test]
@@ -295,7 +304,7 @@ mod tests {
         // R[(0,1),(1,0)] has corners with i+j = 1 and i+j = 1 (both on boundary g4=1).
         // As a multi-corner region it must be removed; R(0,1) alone survives.
         let r_multi = Region::new([Corner::new(0, 1), Corner::new(1, 0)]);
-        let mut cs = Candidates { regions: vec![Region::simple(0, 1), r_multi], accepted: vec![], resigned: vec![], expected: vec![] };
+        let mut cs = make_candidates(&[Region::simple(0, 1), r_multi]);
         cs.filter_by_g4(1);
         assert_eq!(cs.regions, vec![Region::simple(0, 1)]);
     }
@@ -369,6 +378,15 @@ mod tests {
         assert_eq!(cs.take_next(), Some((Region::simple(0, 0), false)));
         assert_eq!(cs.take_next(), Some((Region::simple(1, 1), false)));
         assert_eq!(cs.take_next(), None);
+    }
+
+    #[test]
+    fn test_reject_keeps_maximal() {
+        let mut cs = make_candidates(&[]);
+        cs.reject(&Region::simple(0, 0));
+        cs.reject(&Region::simple(1, 1)); // contains R(0, 0)
+        cs.reject(&Region::simple(0, 2)); // with its transpose R(2, 0)
+        assert_eq!(cs.rejected, vec![Region::simple(1, 1), Region::simple(0, 2), Region::simple(2, 0)]);
     }
 
     #[test]

@@ -227,6 +227,10 @@ impl G0Calc {
         &self.candidates.accepted
     }
 
+    pub fn rejected(&self) -> &[Region] {
+        &self.candidates.rejected
+    }
+
     pub fn resigned(&self) -> &[Region] {
         &self.candidates.resigned
     }
