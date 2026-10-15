@@ -176,7 +176,7 @@ impl G0Calc {
 
         GridComplex::new_filtered(gd, |x| 
             candidates.regions.iter().any(|r| { 
-                let s = r.right_end(); // r is to be shifted by (-s, -s).
+                let s = r.right_end().max(0); // r is to be shifted by (-s, -s), as in process.
                 let m = x.maslov_deg;
                 if m < -2 * s { return false; }
 
@@ -500,6 +500,16 @@ mod tests {
         };
         assert!(accepted(false).is_empty());
         assert_eq!(accepted(true), HashSet::from([Region::simple(-1, 1), Region::simple(1, -1)]));
+    }
+
+    // A candidate with right end < 0, which is not realizable, with generator filtering on.
+    #[test]
+    fn test_negative_right_end() {
+        let mut candidates = Candidates::new();
+        candidates.add(Region::simple(-1, 1));
+        let mut calc = G0Calc::init_with_candidates(&GridDiagram::trefoil(), candidates, G0CalcConfig::default());
+        calc.run();
+        assert!(calc.accepted().is_empty());
     }
 
     #[test]
