@@ -15,13 +15,17 @@ pub struct CliArgs {
 #[derive(Subcommand, Debug)]
 #[clap(rename_all = "lower")]
 pub enum Cmd {
+    /// The invariant 𝒢₀
     G0(g0::Args),
+    /// The grid homology GH~, GH^ or GH⁻
     Gh(gh::Args),
+    /// The knot Floer homology ĤFK
     Hfk(hfk::Args),
+    /// The Ozsváth–Szabó invariant τ
     Tau(tau::Args),
-    /// The Υ-invariant, from G0
+    /// The Ozsváth–Stipsicz–Szabó invariant Υ
     Upsilon(upsilon::Args),
-    /// The d-invariants of the p/q-surgery, from the V_k
+    /// The d-invariants of the p/q-surgery
     D(d::Args),
     /// Download grid diagrams from KnotInfo into the data directory
     Setup(setup::Args),

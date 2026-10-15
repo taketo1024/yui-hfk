@@ -15,7 +15,8 @@ pub trait AppArgs {
     }
 }
 
-/// The options of `G0CalcConfig`, shared by the commands.
+// note: a plain comment, since clap would show a doc comment as the commands' description.
+// The options of `G0CalcConfig`, shared by the commands.
 #[derive(Clone, Debug, clap::Args)]
 pub struct ConfigArgs {
     /// Try the U-specialization NG fast-path on large systems
