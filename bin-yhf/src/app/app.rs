@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use crate::app::cmd::tau;
+use crate::app::cmd::{d, tau, upsilon};
 
 use super::args::AppArgs;
 use super::cmd::{g0, gh, hfk, setup};
@@ -19,6 +19,10 @@ pub enum Cmd {
     Gh(gh::Args),
     Hfk(hfk::Args),
     Tau(tau::Args),
+    /// The Υ-invariant, from G0
+    Upsilon(upsilon::Args),
+    /// The d-invariants of the p/q-surgery, from the V_k
+    D(d::Args),
     /// Download grid diagrams from KnotInfo into the data directory
     Setup(setup::Args),
 }
@@ -30,6 +34,8 @@ impl CliArgs {
             Cmd::Gh(args)  => args,
             Cmd::Hfk(args) => args,
             Cmd::Tau(args) => args,
+            Cmd::Upsilon(args) => args,
+            Cmd::D(args) => args,
             Cmd::Setup(args) => args,
         }
     }
@@ -58,6 +64,8 @@ impl App {
             Cmd::Gh(args)  => gh::dispatch(args),
             Cmd::Hfk(args) => hfk::dispatch(args),
             Cmd::Tau(args) => tau::dispatch(args),
+            Cmd::Upsilon(args) => upsilon::dispatch(args),
+            Cmd::D(args) => d::dispatch(args),
             Cmd::Setup(args) => setup::dispatch(args),
         };
 
