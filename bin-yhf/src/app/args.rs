@@ -32,11 +32,9 @@ pub struct ConfigArgs {
 }
 
 impl ConfigArgs {
-    // note: accept_if_unique stays on, as it always has been in the CLI.
     pub fn config(&self) -> G0CalcConfig {
         let defaults = G0CalcConfig::default();
         G0CalcConfig {
-            accept_if_unique: true,
             try_fast_ng: self.try_fast_ng,
             mode:        self.mode,
             max_size:    self.max_size.unwrap_or(defaults.max_size),

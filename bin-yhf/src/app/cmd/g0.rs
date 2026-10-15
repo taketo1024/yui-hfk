@@ -1,4 +1,4 @@
-use yui_hfk::G0Calc;
+use yui_hfk::{G0Calc, G0CalcConfig};
 use yui_hfk::g_zero::{Candidates, Region};
 use crate::app::{AppArgs, ConfigArgs, utils::load_diagram};
 
@@ -50,7 +50,8 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
     let gd = load_diagram(&args.knot)?;
     let gd = if args.mirror { gd.rotate90() } else { gd };
 
-    let config = args.config.config();
+    // note: a candidate given by -R alone must be tested.
+    let config = G0CalcConfig { accept_if_unique: args.region.is_none(), ..args.config.config() };
     let mut calc = match &args.region {
         Some(r) => {
             let mut candidates = Candidates::new();

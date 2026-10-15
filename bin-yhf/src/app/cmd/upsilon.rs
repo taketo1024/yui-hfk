@@ -1,4 +1,5 @@
 use log::error;
+use yui_hfk::G0CalcConfig;
 use yui_hfk::invariants::upsilon::upsilon_with_config;
 use crate::app::{AppArgs, ConfigArgs, utils::load_diagram};
 
@@ -39,7 +40,8 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
     let gd = load_diagram(&args.knot)?;
     let gd = if args.mirror { gd.rotate90() } else { gd };
 
-    match upsilon_with_config(&gd, args.g, args.g4, args.tau, args.config.config()) {
+    let config = G0CalcConfig { accept_if_unique: true, ..args.config.config() };
+    match upsilon_with_config(&gd, args.g, args.g4, args.tau, config) {
         Ok(u) => Ok(format!("{u}")),
         Err(e) => {
             error!("Unable to compute Υ: G0 is not decided.");

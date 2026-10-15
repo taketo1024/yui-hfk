@@ -20,6 +20,8 @@ pub struct G0CalcConfig {
     pub mode: Mode,
     pub filter_regions: bool,
     pub filter_gens: bool,
+    /// Accept the last candidate without a test when nothing is accepted or resigned so far.
+    /// Valid only when the candidates contain `G0(K)`, as those of `G0Calc::init` do.
     pub accept_if_unique: bool,
     pub try_fast_ng: bool,
     pub max_size: usize,
@@ -165,14 +167,6 @@ impl G0Calc {
             info!("  {r}");
         }
 
-        if config.accept_if_unique && candidates.regions.len() == 1 { 
-            let r = candidates.regions.pop().unwrap();
-            info!("accept unique region:");
-            info!("  {r}");
-
-            candidates.accept(&r);
-        }
-
         candidates
     }
 
@@ -250,6 +244,14 @@ impl G0Calc {
     // region has right_end = 0, which is required by find_homologous.
     fn process(&mut self, r: &Region, positive: bool) {
         info!("try: {r} (remain: {})", self.candidates.regions.len());
+
+        // note: G0 is non-empty and among the candidates, and all the others are rejected.
+        let c = &self.candidates;
+        if self.config.accept_if_unique && c.regions.is_empty() && c.accepted.is_empty() && c.resigned.is_empty() {
+            info!("OK: {r} (the last candidate)");
+            self.candidates.accept(r);
+            return
+        }
 
         if r.contains_chain(&self.z) {
             debug!("  z contained in {r}.");
@@ -467,6 +469,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use num_traits::Zero;
 
     use super::*;
@@ -481,6 +485,22 @@ mod tests {
         }
     }
 
+    // note: with accept_if_unique, the last candidate is accepted without a test. R(-1, 1) is
+    // not realizable for the trefoil, but these candidates do not contain G0.
+    #[test]
+    fn test_accept_if_unique() {
+        let gd = GridDiagram::trefoil();
+        let accepted = |accept_if_unique| {
+            let mut candidates = Candidates::new();
+            candidates.add(Region::simple(0, 0));
+            candidates.add(Region::simple(-1, 1));
+            let mut calc = G0Calc::init_with_candidates(&gd, candidates, G0CalcConfig { accept_if_unique, ..config() });
+            calc.run();
+            calc.accepted().iter().cloned().collect::<HashSet<_>>()
+        };
+        assert!(accepted(false).is_empty());
+        assert_eq!(accepted(true), HashSet::from([Region::simple(-1, 1), Region::simple(1, -1)]));
+    }
 
     #[test]
     fn test_find_homologous_unknot_already_inside() {
