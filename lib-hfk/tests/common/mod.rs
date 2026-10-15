@@ -5,9 +5,10 @@ pub mod types;
 use std::time::Instant;
 
 use yui_hfk::g_zero::Region;
-use yui_hfk::{G0Calc, G0CalcConfig, GridDiagram};
+use yui_hfk::g_zero::calc::G0CalcError;
+use yui_hfk::{G0Calc, G0CalcConfig, GridDiagram, tau};
 
-use types::{Regions, regions_of, to_regions};
+use types::{K, Regions, regions_of, to_regions};
 
 /// Checks one knot, returning the number of regions left undecided. The known
 /// `genus`, `g4` and `tau` are passed to `G0Calc::init`, and `expected` is passed
@@ -51,7 +52,7 @@ pub fn check_g0(
 
 /// Runs `check` on each knot in turn, with one line per knot and a summary.
 /// Set `RUST_LOG` (e.g. `yui_hfk=debug`) to log the calculation as well.
-pub fn run_all<K>(label: &str, knots: &[&K], name: impl Fn(&K) -> &str, check: impl Fn(&K) -> usize) {
+pub fn run_all<T>(label: &str, knots: &[&T], name: impl Fn(&T) -> &str, check: impl Fn(&T) -> usize) {
     assert!(!knots.is_empty(), "{label}: no knots selected");
     let _ = env_logger::builder().is_test(true).try_init();
 
@@ -69,4 +70,24 @@ pub fn run_all<K>(label: &str, knots: &[&K], name: impl Fn(&K) -> &str, check: i
     }).count();
 
     eprintln!("{label}: {} knots, {undecided} with undecided regions", knots.len());
+}
+
+/// Checks `yui_hfk::tau` of the diagram tested against `tau` of each knot. As in
+/// `check_g0`, resigning is "undecided" rather than wrong.
+#[allow(dead_code)] // note: not every test crate uses it
+pub fn run_tau(label: &str, knots: &[&K]) {
+    assert!(!knots.is_empty(), "{label}: no knots selected");
+
+    let undecided = knots.iter().filter(|k| match tau(&k.diagram()) {
+        Ok(t) => {
+            assert_eq!(t, k.tau, "{}: tau", k.name);
+            false
+        }
+        Err(G0CalcError::Resigned) => {
+            eprintln!("  {}: tau undecided", k.name);
+            true
+        }
+    }).count();
+
+    eprintln!("{label}: {} knots, {undecided} undecided", knots.len());
 }
