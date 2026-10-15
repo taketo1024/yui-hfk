@@ -235,6 +235,19 @@ impl G0Calc {
         &self.candidates.resigned
     }
 
+    /// `G0(K)`, the accepted regions, unless a resigned region may still be minimal: one that
+    /// contains no accepted region and lies in no rejected one.
+    pub fn g0(&self) -> Result<Vec<Region>, G0CalcError> {
+        let undecided = self.resigned().iter().any(|r| {
+            !self.accepted().iter().any(|a| r.includes(a)) && !self.rejected().iter().any(|s| s.includes(r))
+        });
+        if undecided {
+            Err(G0CalcError::Resigned)
+        } else {
+            Ok(self.accepted().to_vec())
+        }
+    }
+
     // Tests whether `r` is realizable: tries to find a cycle homologous to z
     // inside r. Shifts both r and z by s = right_end(r) so that the shifted
     // region has right_end = 0, which is required by find_homologous.
