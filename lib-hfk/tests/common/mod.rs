@@ -3,8 +3,7 @@
 use std::collections::BTreeSet;
 use std::time::Instant;
 
-use itertools::Itertools;
-use yui_hfk::g_zero::{Corner, Region};
+use yui_hfk::g_zero::{self, Corner, Region};
 use yui_hfk::{G0Calc, G0CalcConfig, GridDiagram};
 
 /// `G0(K)` as a set of regions, each a set of corners.
@@ -16,20 +15,16 @@ pub fn regions_of(rs: &[Region]) -> Regions {
         .collect()
 }
 
-/// `G0(K*)` from `G0(K)` by [SS] Cor. A.7: the minimal regions among
-/// `cl({-p₁, …, -p_N})`, over all choices of a corner `pᵢ` of each region `Rᵢ`.
+pub fn to_regions(g0: &Regions) -> Vec<Region> {
+    g0.iter()
+        .map(|r| Region::new(r.iter().map(|&(i, j)| Corner::new(i, j))))
+        .collect()
+}
+
+/// `G0(K*)` from `G0(K)`, by `yui_hfk::g_zero::dual` ([SS] Cor. A.7).
 #[allow(dead_code)] // note: not every test crate uses it
 pub fn dual(g0: &Regions) -> Regions {
-    let candidates: Vec<Region> = g0.iter()
-        .map(|r| r.iter().copied().collect_vec())
-        .multi_cartesian_product()
-        .map(|ps| Region::new(ps.into_iter().map(|(i, j)| Corner::new(-i, -j))))
-        .collect();
-    let minimal = candidates.iter()
-        .filter(|r| !candidates.iter().any(|s| s != *r && r.includes(s)))
-        .cloned()
-        .collect_vec();
-    regions_of(&minimal)
+    regions_of(&g_zero::dual(&to_regions(g0)))
 }
 
 /// Checks one knot, returning the number of regions left undecided. The known
@@ -48,12 +43,8 @@ pub fn check_g0(
     expected: &Regions,
     config: G0CalcConfig,
 ) -> usize {
-    let hint = expected.iter()
-        .map(|r| Region::new(r.iter().map(|&(i, j)| Corner::new(i, j))))
-        .collect();
-
     let mut calc = G0Calc::init(gd, Some(genus), g4, tau, config);
-    calc.set_expected(hint);
+    calc.set_expected(to_regions(expected));
     calc.run();
 
     let accepted = regions_of(calc.accepted());
