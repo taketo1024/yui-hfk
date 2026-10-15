@@ -5,8 +5,21 @@ use num_traits::{One, Zero};
 use yui_core::num::Ratio;
 
 use crate::g_zero::Region;
+use crate::g_zero::calc::G0CalcError;
+use crate::{G0Calc, G0CalcConfig, GridDiagram};
 
 type Q = Ratio<i64>;
+
+pub fn upsilon(gd: &GridDiagram) -> Result<Upsilon, G0CalcError> {
+    upsilon_with_config(gd, None, None, None, G0CalcConfig::default())
+}
+
+/// `Υ_K` from `G0(K)`, computed by `G0Calc` with the given `g`, `g4` and `tau` if known.
+pub fn upsilon_with_config(gd: &GridDiagram, g: Option<usize>, g4: Option<usize>, tau: Option<isize>, config: G0CalcConfig) -> Result<Upsilon, G0CalcError> {
+    let mut calc = G0Calc::init(gd, g, g4, tau, config);
+    calc.run();
+    Ok(Upsilon::from_g0(&calc.g0()?))
+}
 
 /// The Υ-invariant `Υ_K` on `[0, 2]`, a piecewise linear function given by its vertices.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -120,6 +133,18 @@ mod tests {
         for (ty, expected) in table {
             assert_eq!(Upsilon::from_g0(&g0(ty)).vertices(), expected, "{ty:?}");
         }
+    }
+
+    #[test]
+    fn from_diagram() {
+        let t2_3 = pl(&[((0, 1), (0, 1)), ((1, 1), (-1, 1)), ((2, 1), (0, 1))]);
+        assert_eq!(upsilon(&GridDiagram::trefoil()).unwrap().vertices(), t2_3);
+
+        let t2_5 = pl(&[((0, 1), (0, 1)), ((1, 1), (-2, 1)), ((2, 1), (0, 1))]);
+        assert_eq!(upsilon(&GridDiagram::test_data("5_1").unwrap()).unwrap().vertices(), t2_5);
+
+        let zero = pl(&[((0, 1), (0, 1)), ((2, 1), (0, 1))]);
+        assert_eq!(upsilon(&GridDiagram::figure8()).unwrap().vertices(), zero);
     }
 
     // Υ_{T3,4} = −3t on [0, 2/3].

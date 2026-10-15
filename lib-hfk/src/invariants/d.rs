@@ -9,9 +9,14 @@ use crate::{G0Calc, G0CalcConfig, GridDiagram, genus};
 
 type Q = Ratio<i64>;
 
+pub fn d(gd: &GridDiagram, p: i64, q: i64) -> Result<Vec<Q>, G0CalcError> {
+    d_with_config(gd, p, q, None, None, G0CalcConfig::default())
+}
+
 /// `[d(S³_{p/q}(K), i) | 0 ≤ i < |p|]` for coprime `p ≠ 0` and `q > 0`. For `p < 0`, it is
 /// `−d(S³_{−p/q}(K*), i)` by `S³_{p/q}(K) ≅ −S³_{−p/q}(K*)`, with the same labels `i`.
 pub fn d_with_config(gd: &GridDiagram, p: i64, q: i64, g: Option<usize>, g4: Option<usize>, config: G0CalcConfig) -> Result<Vec<Q>, G0CalcError> {
+    assert!(p != 0, "0-surgery is not supported");
     if p > 0 {
         let vs = v_seq_with_config(gd, g, g4, config)?;
         Ok(d_from_v(&vs, p, q))
@@ -162,6 +167,11 @@ mod tests {
 
         let t2_5 = g0(&[&[(0, 2)], &[(1, 1)], &[(2, 0)]]);
         assert_eq!((0..2).map(|k| v_from_g0(&t2_5, k)).collect_vec(), [1, 1]);
+    }
+
+    #[test]
+    fn d_trefoil() {
+        assert_eq!(d(&GridDiagram::trefoil(), 1, 1), Ok(vec![q(-2, 1)]));
     }
 
     #[test]
