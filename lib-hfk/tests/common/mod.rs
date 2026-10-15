@@ -61,17 +61,21 @@ pub fn check_via_mirror(k: &K, config: G0CalcConfig, mirror_config: G0CalcConfig
     init_logger();
 
     let t = to_regions(&k.expected());
-    let mut calc = G0Calc::init(&k.diagram(), Some(k.g), Some(k.g4), Some(k.tau), config);
-    calc.set_expected(t.clone());
-    calc.run();
 
-    // note: no region inside a rejected one is realizable.
-    let in_rejected = |r: &Region| calc.rejected().iter().any(|s| s.includes(r));
-    let missed: Vec<_> = t.iter().filter(|e| in_rejected(e)).collect();
-    assert!(missed.is_empty(), "{}: rejected realizable {missed:?}", k.name);
+    // note: a block, so that the calculation on K is dropped before the one on K*.
+    let (accept, reject) = {
+        let mut calc = G0Calc::init(&k.diagram(), Some(k.g), Some(k.g4), Some(k.tau), config);
+        calc.set_expected(t.clone());
+        calc.run();
 
-    let u: Vec<_> = calc.resigned().iter().filter(|r| !in_rejected(r)).cloned().collect();
-    let (accept, reject) = mirror_tests(calc.accepted(), &u, &t);
+        // note: no region inside a rejected one is realizable.
+        let in_rejected = |r: &Region| calc.rejected().iter().any(|s| s.includes(r));
+        let missed: Vec<_> = t.iter().filter(|e| in_rejected(e)).collect();
+        assert!(missed.is_empty(), "{}: rejected realizable {missed:?}", k.name);
+
+        let u: Vec<_> = calc.resigned().iter().filter(|r| !in_rejected(r)).cloned().collect();
+        mirror_tests(calc.accepted(), &u, &t)
+    };
     if accept.is_empty() && reject.is_empty() {
         return;
     }
