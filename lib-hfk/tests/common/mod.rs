@@ -1,4 +1,5 @@
 //! Shared helpers for the `G0(K)` regression tests.
+#![allow(dead_code)] // note: each test crate uses only some of these
 
 pub mod types;
 
@@ -56,7 +57,6 @@ pub fn check_g0(
 /// for the accepted regions `A` and the realizable ones `V` among the undecided ones `U`, and
 /// `T` must be one of these. Then the tests of `mirror_tests` on `K*` (with `mirror_config`)
 /// exclude all the others.
-#[allow(dead_code)] // note: not every test crate uses it
 pub fn check_via_mirror(k: &K, config: G0CalcConfig, mirror_config: G0CalcConfig) {
     init_logger();
 
@@ -98,7 +98,6 @@ pub fn check_via_mirror(k: &K, config: G0CalcConfig, mirror_config: G0CalcConfig
 /// With `D = dual(T)` and `D'` the dual of an alternative ([SS] Cor. A.7), `D ≠ D'`. So either
 /// some region of `D` contains no region of `D'` (to accept: realizable only under `D`), or
 /// some region of `D'` contains no region of `D` (to reject: realizable only under `D'`).
-#[allow(dead_code)] // note: not every test crate uses it
 pub fn mirror_tests(a: &[Region], u: &[Region], t: &[Region]) -> (Vec<Region>, Vec<Region>) {
     assert!(u.len() <= 16, "too many undecided regions: {}", u.len());
 
@@ -156,7 +155,6 @@ fn min_regions(rs: &[Region]) -> Vec<Region> {
 
 /// Runs `check` on each knot in turn, with one line per knot and a summary.
 /// Set `RUST_LOG` (e.g. `yui_hfk=debug`) to log the calculation as well.
-#[allow(dead_code)] // note: not every test crate uses it
 pub fn run_all<T>(label: &str, knots: &[&T], name: impl Fn(&T) -> &str, check: impl Fn(&T) -> usize) {
     assert!(!knots.is_empty(), "{label}: no knots selected");
     init_logger();
@@ -179,7 +177,6 @@ pub fn run_all<T>(label: &str, knots: &[&T], name: impl Fn(&T) -> &str, check: i
 
 /// Checks `yui_hfk::tau` of the diagram tested against `tau` of each knot. As in
 /// `check_g0`, resigning is "undecided" rather than wrong.
-#[allow(dead_code)] // note: not every test crate uses it
 pub fn run_tau(label: &str, knots: &[&K]) {
     assert!(!knots.is_empty(), "{label}: no knots selected");
 
