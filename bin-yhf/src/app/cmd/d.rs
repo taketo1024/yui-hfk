@@ -45,6 +45,7 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
 
     let gd = load_diagram(&args.knot)?;
     let gd = if args.mirror { gd.rotate90() } else { gd };
+    gd.log_diagram();
 
     match d_with_config(&gd, p, q, args.g, args.g4, args.config.config()) {
         Ok(ds) => Ok(ds.iter().enumerate().map(|(i, d)| format!("{i}: {d}")).collect::<Vec<_>>().join("\n")),

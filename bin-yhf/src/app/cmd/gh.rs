@@ -39,6 +39,7 @@ pub enum GHType {
 pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
     let d = load_diagram(&args.knot)?;
     let diagram = if args.mirror { d.rotate90() } else { d };
+    diagram.log_diagram();
 
     let a_bound = args.a_bound;
     let pred = move |x: &yui_hfk::GCGen| {

@@ -49,6 +49,7 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
 
     let gd = load_diagram(&args.knot)?;
     let gd = if args.mirror { gd.rotate90() } else { gd };
+    gd.log_diagram();
 
     // note: a candidate given by -R alone must be tested.
     let config = G0CalcConfig { accept_if_unique: args.region.is_none(), ..args.config.config() };

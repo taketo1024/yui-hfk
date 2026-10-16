@@ -36,6 +36,7 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
 
     let gd = load_diagram(&args.knot)?;
     let gd = if args.mirror { gd.rotate90() } else { gd };
+    gd.log_diagram();
 
     let t = tau_with_config(&gd, args.g, args.g4, args.config.config());
 
