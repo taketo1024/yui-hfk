@@ -1,4 +1,6 @@
+use log::info;
 use num_integer::Integer;
+use yui_core::util::format::table;
 
 use crate::grid_diagram::MAX_SIZE;
 
@@ -86,6 +88,38 @@ impl GridDiagram {
     /// The number of markings (and grid dimension n for n×n grid).
     pub fn grid_number(&self) -> u8 {
         self.size / 2
+    }
+
+    /// `[os, xs]` as in `from_sequences`, the inverse of it.
+    pub fn sequences(&self) -> [Vec<u8>; 2] {
+        // note: os and xs are kept sorted by column.
+        let rows = |ps: &[GridPoint]| -> Vec<u8> {
+            ps.iter().map(|p| (p.y - 1) / 2).collect()
+        };
+        [rows(&self.os), rows(&self.xs)]
+    }
+
+    /// The grid as a table of rows `j` (top to bottom) and columns `i`, as in `from_sequences`,
+    /// with `O` and `X` on the markings and `.` on the empty cells.
+    pub fn to_table_string(&self) -> String {
+        let n = self.grid_number();
+        table("j\\i", (0..n).rev(), 0..n, |j, i| {
+            let p = GridPoint::new(2 * i + 1, 2 * j + 1);
+            if self.os.contains(&p) {
+                "O"
+            } else if self.xs.contains(&p) {
+                "X"
+            } else {
+                "."
+            }
+        })
+    }
+
+    /// Info-logs the diagram, as `[os, xs]` and as a table, with its grid number and writhe.
+    pub fn log_diagram(&self) {
+        info!("diagram: {:?}\n{}", self.sequences(), self.to_table_string());
+        info!("  grid number: {}", self.grid_number());
+        info!("  writhe: {}", self.writhe());
     }
 
 pub fn unknot() -> GridDiagram { 
@@ -289,10 +323,18 @@ mod tests {
         let os_seq = vec![2, 0, 1];
         let xs_seq = vec![1, 2, 0];
         let g = GridDiagram::from_sequences(&os_seq, &xs_seq);
+        assert_eq!(g.sequences(), [os_seq, xs_seq]);
 
-        // The points should encode the sequences correctly
-        assert_eq!(g.os.len(), 3);
-        assert_eq!(g.xs.len(), 3);
+        let m = GridDiagram::trefoil().rotate90();
+        let [os, xs] = m.sequences();
+        assert_eq!(GridDiagram::from_sequences(&os, &xs), m);
+    }
+
+    #[test]
+    fn test_table_string() {
+        let s = GridDiagram::unknot().to_table_string();
+        let rows: Vec<Vec<&str>> = s.lines().map(|l| l.split_whitespace().collect()).collect();
+        assert_eq!(rows, [vec!["j\\i", "0", "1"], vec!["1", "X", "O"], vec!["0", "O", "X"]]);
     }
 
 
