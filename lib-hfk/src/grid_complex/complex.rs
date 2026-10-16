@@ -2,10 +2,12 @@ use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::ops::RangeInclusive;
 use itertools::Itertools;
+use log::info;
 use num_traits::{One, Zero};
 use yui_core::lc::Lc;
 use yui_core::num::FF2;
 use yui_core::ext::{IteratorExt, empty_range};
+use yui_core::util::format::table;
 use yui_homology::{ChainComplex1, ChainComplex2, GrMod, GrMod1, GrMod2, Summand, isize2};
 use yui_core::poly::MultiVar;
 use crate::grid_complex::gc_gen::GCInfGen;
@@ -88,8 +90,19 @@ impl<V: GCType> GridComplex<V> {
         self.gens.maslov_deg_range()
     }
 
-    pub fn alex_deg_range(&self) -> RangeInclusive<isize> { 
+    pub fn alex_deg_range(&self) -> RangeInclusive<isize> {
         self.gens.alex_deg_range()
+    }
+
+    /// Info-logs the number of generators, in total and by bidegree in a Maslov-Alexander table.
+    pub fn log_generators(&self) {
+        let counts = table("A\\M", self.alex_deg_range().rev(), self.maslov_deg_range(), |j, i| {
+            match self.raw_gens(*i, *j).len() {
+                0 => ".".to_string(),
+                n => n.to_string(),
+            }
+        });
+        info!("  #generators: {}\n{}", self.gens.len(), counts);
     }
 
     fn raw_gens(&self, i: isize, j: isize) -> &[GCGen] {

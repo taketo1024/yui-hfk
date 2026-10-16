@@ -100,7 +100,7 @@ impl G0Calc {
     pub fn init_with_candidates(gd: &GridDiagram, candidates: Candidates, config: G0CalcConfig) -> Self {
         info!("prepare generators ...");
         let gc = Self::build_complex(gd, &candidates, config.filter_gens);
-        info!("  #generators: {}", gc.gens.len());
+        gc.log_generators();
 
         info!("compute homological generator..");
         let z = gc.hom_gen();
