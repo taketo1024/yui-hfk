@@ -2,35 +2,27 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-`yui-hfk` computes *Heegaard Floer knot homology* from grid diagrams, written in
-[Rust](https://www.rust-lang.org). It is built on the [`yui`](https://github.com/taketo1024/yui)
-libraries.
+`yui-hfk` computes *Heegaard Floer knot homology* and related invariants from grid diagrams. It is built on the [`yui`](https://github.com/taketo1024/yui)
+libraries, written in
+[Rust](https://www.rust-lang.org).
 
 ## Libraries
 - [`yui-hfk`](./lib-hfk/) - Grid diagrams, grid complexes, and the invariants `ĤFK`, `g`, `τ` and `𝒢₀`.
 
 ## Binaries
-- [`yhf`](./bin-yhf/) - Heegaard Floer knot homology computations.
+- [`yhf`](./bin-yhf/) - A command-line tool (CLI) for `yui-hfk`: computes `ĤFK`, `τ`, `Υ`, the
+  `d`-invariants and `𝒢₀` of a knot, given by name or by a grid diagram.
 
 ## Grid diagram data
 
-`GridDiagram::load(name)` (and the `yhf` CLI when given a name like `3_1`) reads grid diagrams
-from an external user-data directory, `$YUI_DATA_DIR` or the platform default. To populate it
-from the [KnotInfo](https://knotinfo.org/) database:
+`yhf setup` downloads the grid diagrams of the knots in [**KnotInfo**](https://knotinfo.org/) (C. Livingston and A. H. Moore,
+*KnotInfo: Table of Knot Invariants*). The user can add more grid
+diagrams in the same format.
 
-```bash
-cargo run --release --bin yhf -- setup             # writes to the default data dir
-cargo run --release --bin yhf -- setup --out DIR   # or to a custom directory
-```
+## Reference
 
-See [`yhf`](./bin-yhf/) for details.
-
-### Data sources
-
-- Grid diagrams come from **KnotInfo**:
-
-  > C. Livingston and A. H. Moore, *KnotInfo: Table of Knot Invariants*,
-  > <https://knotinfo.org/>
+- T. Sano, K. Sato, *Computation of the Υ-invariant and the d-invariants of Dehn surgeries for
+  knots with up to 12 crossings*, [arXiv:2002.09210](https://arxiv.org/abs/2002.09210v2).
 
 ## License
 `yui-hfk` is released under the [MIT license](LICENSE).
