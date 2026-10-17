@@ -12,6 +12,8 @@ Grid homology is a combinatorial description of knot Floer homology, introduced 
 Manolescu, Ozsváth, Sarkar, Szabó and Thurston. From a grid diagram `G` of a knot `K`
 one builds a chain complex whose homology recovers `HFK(K)`, with no analysis involved.
 
+Use [`yhf`](https://crates.io/crates/yhf) to use the program from the command line.
+
 ## What it computes
 
 - `ĤFK(K)` — the knot Floer homology, bigraded by Maslov and Alexander degree.
@@ -52,15 +54,15 @@ one builds a chain complex whose homology recovers `HFK(K)`, with no analysis in
   together with the symmetry `ĤFK_{i,j}(K) ≅ ĤFK_{i−2j,−j}(K)`.
 - **`genus(&gd)`** — the Seifert genus `g(K)`, the top Alexander degree of `GH~(G)`.
 - **`tau(&gd)`** — the Ozsváth–Szabó invariant `τ(K)`, by the regions `{i ≤ −1} ∪ R(0, m)`
-  (\[SS\] Thm 2.20). If `τ ≤ −1` or the search resigns, it is computed on the mirror, by
+  (\[SS20\] Thm 2.20). If `τ ≤ −1` or the search resigns, it is computed on the mirror, by
   `τ(K*) = −τ(K)`. `tau_with_config` also accepts the genus and the 4-genus when they are
   known, and a `G0CalcConfig`.
 - **`upsilon(&gd)`** — `Υ_K` as an `Upsilon`, a piecewise linear function with rational
-  vertices, read from `𝒢₀(K)` (\[SS\] Thm 2.20). `Upsilon::from_g0` reads it from a known `𝒢₀(K)`.
+  vertices, read from `𝒢₀(K)` (\[SS20\] Thm 2.20). `Upsilon::from_g0` reads it from a known `𝒢₀(K)`.
 - **`d(&gd, p, q)`** — the `d`-invariants `d(S³_{p/q}(K), i)` for `0 ≤ i < |p|`, from the
   `V_k` of \[NW15\]. `v_seq(&gd)` gives `[V_0, V_1, …]`: it computes `τ` first, and all
   `V_k = 0` if `τ ≤ 0` and `R(0, 0)` is realizable. Otherwise they are read from `𝒢₀(K)`
-  (\[SS\] Thm 2.20). `v_seq_from_g0` reads them from a known `𝒢₀(K)`, and
+  (\[SS20\] Thm 2.20). `v_seq_from_g0` reads them from a known `𝒢₀(K)`, and
   `v_seq_from_regions` tests the regions `R(m, k+m)` directly, for validation.
 - **`G0Calc`** — computes `𝒢₀(K)` as a list of `Region`s. A `Region` is a finite union of
   quadrants `(−∞, i] × (−∞, j]`, stored as an antichain of `Corner`s. `G0CalcConfig`
@@ -117,11 +119,11 @@ homologically thick and non-slice, or have `τ = 0`:
 
 - [`tests/thick_11.rs`](https://github.com/taketo1024/yui-hfk/blob/main/lib-hfk/tests/thick_11.rs)
   and [`tests/tau0_11.rs`](https://github.com/taketo1024/yui-hfk/blob/main/lib-hfk/tests/tau0_11.rs):
-  the 44 knots of Table 1 in \[SS\] (grid number 7–11), against the original Swift
+  the 44 knots of Table 1 in \[SS20\] (grid number 7–11), against the original Swift
   implementation.
 - `tests/thick_12_t*.rs` (one file for each `𝒢₀`-type), `tests/tau0_12.rs` and
   `tests/thick_12_heavy.rs`: the 199 prime knots with 12 crossings, against the `𝒢₀`-types
-  of \[SS\] (v2), with `g`, `g4` and `|τ|` from KnotInfo.
+  of \[SS20\] (v2), with `g`, `g4` and `|τ|` from KnotInfo.
 
 The `τ` tests are cheaper, about 1h45m for all of them on an Apple M1 Ultra. The `𝒢₀` tests
 take much longer, up to about a day for one knot of `thick_12_heavy.rs` (see the `ignore`
@@ -130,18 +132,19 @@ diagrams are inlined, so the tests need no external data.
 
 ## References
 
-- \[MOST07\] C. Manolescu, P. Ozsváth, Z. Szabó, D. Thurston,
-  *On combinatorial link Floer homology*, Geom. Topol. 11 (2007).
 - \[Book\] P. Ozsváth, A. Stipsicz, Z. Szabó,
   *Grid Homology for Knots and Links*, AMS Math. Surveys and Monographs 208 (2015).
+- \[MOST07\] C. Manolescu, P. Ozsváth, Z. Szabó, D. Thurston,
+  *On combinatorial link Floer homology*, Geom. Topol. 11 (2007).
 - \[NW15\] Y. Ni, Z. Wu, *Cosmetic surgeries on knots in S³*, J. Reine Angew. Math. 706 (2015).
 - \[OS03a\] P. Ozsváth, Z. Szabó, *Absolutely graded Floer homologies and intersection forms
   for four-manifolds with boundary*, Adv. Math. 173 (2003).
 - \[OSS17\] P. Ozsváth, A. Stipsicz, Z. Szabó, *Concordance homomorphisms from knot Floer
   homology*, Adv. Math. 315 (2017).
-- \[Sat23\] K. Sato, *A full-twist inequality for the ν⁺-invariant*, and the `𝒢₀` invariant.
-- \[SS\] T. Sano, K. Sato, *An algorithm for computing the Υ-invariant and the
-  d-invariants of Dehn surgeries*, [arXiv:2002.09210](https://arxiv.org/abs/2002.09210).
+- \[Sat23\] K. Sato, *The ν⁺-equivalence classes of genus one knots*, Selecta Math. (N.S.) 29
+  (2023).
+- \[SS20\] T. Sano, K. Sato, *Computation of the Υ-invariant and the d-invariants of Dehn
+  surgeries for knots with up to 12 crossings*, [arXiv:2002.09210](https://arxiv.org/abs/2002.09210v2).
 
 ## License
 
