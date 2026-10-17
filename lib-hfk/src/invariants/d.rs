@@ -10,18 +10,19 @@ use crate::{G0Calc, G0CalcConfig, GridDiagram, genus};
 type Q = Ratio<i64>;
 
 pub fn d(gd: &GridDiagram, p: i64, q: i64) -> Result<Vec<Q>, G0CalcError> {
-    d_with_config(gd, p, q, None, None, G0CalcConfig::default())
+    d_with_config(gd, p, q, None, None, None, G0CalcConfig::default())
 }
 
 /// `[d(S³_{p/q}(K), i) | 0 ≤ i < |p|]` for coprime `p ≠ 0` and `q > 0`. For `p < 0`, it is
 /// `−d(S³_{−p/q}(K*), i)` by `S³_{p/q}(K) ≅ −S³_{−p/q}(K*)`, with the same labels `i`.
-pub fn d_with_config(gd: &GridDiagram, p: i64, q: i64, g: Option<usize>, g4: Option<usize>, config: G0CalcConfig) -> Result<Vec<Q>, G0CalcError> {
+pub fn d_with_config(gd: &GridDiagram, p: i64, q: i64, g: Option<usize>, g4: Option<usize>, tau: Option<isize>, config: G0CalcConfig) -> Result<Vec<Q>, G0CalcError> {
     assert!(p != 0, "0-surgery is not supported");
     if p > 0 {
-        let vs = v_seq_with_config(gd, g, g4, config)?;
+        let vs = v_seq_with_config(gd, g, g4, tau, config)?;
         Ok(d_from_v(&vs, p, q))
     } else {
-        let vs = v_seq_with_config(&gd.rotate90(), g, g4, config)?;
+        // note: tau(K*) = −tau(K).
+        let vs = v_seq_with_config(&gd.rotate90(), g, g4, tau.map(|t| -t), config)?;
         Ok(d_from_v(&vs, -p, q).into_iter().map(|d| -d).collect())
     }
 }
@@ -37,10 +38,40 @@ pub fn d_from_v(vs: &[usize], p: i64, q: i64) -> Vec<Q> {
         .collect()
 }
 
-/// `[V_0(K), …, V_{g4−1}(K)]`, as `V_k(K) = 0` for `k ≥ g4`. With `V_k(K) = min{ m ≥ 0 |
-/// R(m, k+m) is realizable }` ([SS] Thm 2.13, 2.20) and `V_k(K) ≤ ⌈(g4 − k)/2⌉` (Rasmussen),
-/// these simple regions are tested all at once.
-pub fn v_seq_with_config(gd: &GridDiagram, g: Option<usize>, g4: Option<usize>, config: G0CalcConfig) -> Result<Vec<usize>, G0CalcError> {
+pub fn v_seq(gd: &GridDiagram) -> Result<Vec<usize>, G0CalcError> {
+    v_seq_with_config(gd, None, None, None, G0CalcConfig::default())
+}
+
+/// `[V_0(K), V_1(K), …]` by `v_seq_from_g0`, where `G0(K)` is computed with `g`, `g4` and `tau`
+/// as in `G0Calc::init`.
+pub fn v_seq_with_config(gd: &GridDiagram, g: Option<usize>, g4: Option<usize>, tau: Option<isize>, config: G0CalcConfig) -> Result<Vec<usize>, G0CalcError> {
+    let mut calc = G0Calc::init(gd, g, g4, tau, config);
+    calc.run();
+    Ok(v_seq_from_g0(&calc.g0()?))
+}
+
+/// `[V_0(K), V_1(K), …]` up to the last non-zero one, as `V_{k+1}(K) ≤ V_k(K)`.
+pub fn v_seq_from_g0(g0: &[Region]) -> Vec<usize> {
+    // note: V_k = 0 for large k, by a region of G0 in {i ≤ 0}.
+    assert!(g0.iter().any(|r| r.right_end() <= 0), "a region of G0 lies in {{i ≤ 0}}");
+    (0..).map(|k| v_from_g0(g0, k)).take_while(|&v| v > 0).collect()
+}
+
+/// `V_k(K) = min{ m ≥ 0 | ∃R ∈ G0(K), R ⊂ R(m, k+m) }` ([SS] Thm 2.20), where `R ⊂ R(m, k+m)`
+/// iff `i ≤ m` and `j ≤ k + m` for every corner `(i, j)` of `R`.
+fn v_from_g0(g0: &[Region], k: usize) -> usize {
+    let k = k as isize;
+    let m = g0.iter()
+        .map(|r| r.corners().iter().map(|c| c.i.max(c.j - k)).max().unwrap_or(isize::MIN))
+        .min()
+        .expect("G0 is non-empty");
+    m.max(0) as usize
+}
+
+/// The same as `v_seq_with_config`, but testing the simple regions directly, for validation.
+/// With `V_k(K) = min{ m ≥ 0 | R(m, k+m) is realizable }` ([SS] Thm 2.13, 2.20) and `V_k(K) ≤
+/// ⌈(g4 − k)/2⌉` (Rasmussen), these are tested all at once.
+pub fn v_seq_from_regions(gd: &GridDiagram, g: Option<usize>, g4: Option<usize>, config: G0CalcConfig) -> Result<Vec<usize>, G0CalcError> {
     info!("compute V_k ...");
 
     let g4 = g4.unwrap_or_else(|| g.unwrap_or_else(|| genus(gd)));
@@ -57,7 +88,7 @@ pub fn v_seq_with_config(gd: &GridDiagram, g: Option<usize>, g4: Option<usize>, 
     let realizable = |r: &Region| calc.accepted().iter().any(|a| r.includes(a));
     let unrealizable = |r: &Region| calc.rejected().iter().any(|s| s.includes(r));
 
-    (0..g4).map(|k| {
+    let vs = (0..g4).map(|k| {
         let v = (0..=bound(k)).find(|&m| realizable(&region(k, m)))
             .unwrap_or_else(|| panic!("Invalid state: no R(m, {k}+m) with m ≤ {} is realizable", bound(k)));
         if (0..v).all(|m| unrealizable(&region(k, m))) {
@@ -65,18 +96,8 @@ pub fn v_seq_with_config(gd: &GridDiagram, g: Option<usize>, g4: Option<usize>, 
         } else {
             Err(G0CalcError::Resigned)
         }
-    }).collect()
-}
-
-/// `V_k(K) = min{ m ≥ 0 | ∃R ∈ G0(K), R ⊂ R(m, k+m) }` ([SS] Thm 2.20), where `R ⊂ R(m, k+m)`
-/// iff `i ≤ m` and `j ≤ k + m` for every corner `(i, j)` of `R`.
-pub fn v_from_g0(g0: &[Region], k: usize) -> usize {
-    let k = k as isize;
-    let m = g0.iter()
-        .map(|r| r.corners().iter().map(|c| c.i.max(c.j - k)).max().unwrap_or(isize::MIN))
-        .min()
-        .expect("G0 is non-empty");
-    m.max(0) as usize
+    }).collect::<Result<Vec<_>, _>>()?;
+    Ok(vs.into_iter().take_while(|&v| v > 0).collect())
 }
 
 /// `d(S³_{p/q}(O), i) = −1/4 + (2i + 1 − p − q)²/(4pq) − d(S³_{q/r}(O), j)`, where `r` and `j`
@@ -145,10 +166,9 @@ mod tests {
             (&[&[(0, 4)], &[(1, 2)], &[(2, 1)], &[(4, 0)]], &[2, 1, 1, 1, 0]),
         ];
         for (ty, vs) in table {
-            let n = vs.len() + 1;
-            let expected = vs.iter().copied().chain([0]).collect_vec();
-            assert_eq!((0..n).map(|k| v_from_g0(&g0(ty), k)).collect_vec(), expected, "{ty:?}");
-            assert!((0..n).all(|k| v_from_g0(&dual(&g0(ty)), k) == 0), "{ty:?}: mirror");
+            let expected = vs.iter().copied().take_while(|&v| v > 0).collect_vec();
+            assert_eq!(v_seq_from_g0(&g0(ty)), expected, "{ty:?}");
+            assert!(v_seq_from_g0(&dual(&g0(ty))).is_empty(), "{ty:?}: mirror");
         }
     }
 
@@ -156,7 +176,7 @@ mod tests {
     #[test]
     fn t2_7() {
         let t2_7 = g0(&[&[(0, 3)], &[(1, 2)], &[(2, 1)], &[(3, 0)]]);
-        assert_eq!((0..4).map(|k| v_from_g0(&t2_7, k)).collect_vec(), [2, 1, 1, 0]);
+        assert_eq!(v_seq_from_g0(&t2_7), [2, 1, 1]);
     }
 
     // V_k(K*) = min{ m ≥ 0 | ∀R ∈ G0(K), (−m, −k − m) ∈ R } ([SS] Prop 2.21).
@@ -170,16 +190,23 @@ mod tests {
         }
     }
 
-    // T(2,5) = 5_1, with G0-type T2,5: V = (1, 1), and V = (0, 0) for the mirror.
+    // T(2,5) = 5_1, with G0-type T2,5: V = (1, 1), and V = 0 for the mirror.
     #[test]
     fn v_seq_5_1() {
         let gd = GridDiagram::test_data("5_1").unwrap();
-        let config = G0CalcConfig::default();
-        assert_eq!(v_seq_with_config(&gd, Some(2), Some(2), config), Ok(vec![1, 1]));
-        assert_eq!(v_seq_with_config(&gd.rotate90(), Some(2), Some(2), config), Ok(vec![0, 0]));
+        assert_eq!(v_seq(&gd), Ok(vec![1, 1]));
+        assert_eq!(v_seq(&gd.rotate90()), Ok(vec![]));
+    }
 
-        let t2_5 = g0(&[&[(0, 2)], &[(1, 1)], &[(2, 0)]]);
-        assert_eq!((0..2).map(|k| v_from_g0(&t2_5, k)).collect_vec(), [1, 1]);
+    #[test]
+    fn v_seq_from_regions_agrees() {
+        let config = G0CalcConfig::default();
+        for name in ["3_1", "4_1", "5_1", "5_2", "6_1", "6_2", "6_3"] {
+            let gd = GridDiagram::test_data(name).unwrap();
+            for gd in [gd.clone(), gd.rotate90()] {
+                assert_eq!(v_seq_from_regions(&gd, None, None, config), v_seq(&gd), "{name}");
+            }
+        }
     }
 
     #[test]
@@ -191,7 +218,7 @@ mod tests {
     fn d_5_1() {
         let gd = GridDiagram::test_data("5_1").unwrap();
         let config = G0CalcConfig::default();
-        assert_eq!(d_with_config(&gd, 1, 1, Some(2), Some(2), config), Ok(vec![q(-2, 1)]));
-        assert_eq!(d_with_config(&gd, -1, 1, Some(2), Some(2), config), Ok(vec![q(0, 1)]));
+        assert_eq!(d_with_config(&gd, 1, 1, Some(2), Some(2), Some(2), config), Ok(vec![q(-2, 1)]));
+        assert_eq!(d_with_config(&gd, -1, 1, Some(2), Some(2), Some(2), config), Ok(vec![q(0, 1)]));
     }
 }

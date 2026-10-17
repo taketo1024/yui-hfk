@@ -54,7 +54,8 @@ one builds a chain complex whose homology recovers `HFK(K)`, with no analysis in
 - **`upsilon(&gd)`** — `Υ_K` as an `Upsilon`, a piecewise linear function with rational
   vertices, read from `𝒢₀(K)` (\[SS\] Thm 2.20). `Upsilon::from_g0` reads it from a known `𝒢₀(K)`.
 - **`d(&gd, p, q)`** — the `d`-invariants `d(S³_{p/q}(K), i)` for `0 ≤ i < |p|`, from the
-  `V_k` of \[NW15\], which are computed directly from the regions `R(m, k+m)`.
+  `V_k` of \[NW15\], read from `𝒢₀(K)` (\[SS\] Thm 2.20). `v_seq_from_g0` reads them from a
+  known `𝒢₀(K)`.
 - **`G0Calc`** — computes `𝒢₀(K)` as a list of `Region`s. A `Region` is a finite union of
   quadrants `(−∞, i] × (−∞, j]`, stored as an antichain of `Corner`s. `G0CalcConfig`
   bounds the size of the linear systems. Regions that could not be decided within

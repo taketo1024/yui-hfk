@@ -1,5 +1,6 @@
 use log::error;
 use yui_core::num::Ratio;
+use yui_hfk::G0CalcConfig;
 use yui_hfk::invariants::d::d_with_config;
 use crate::app::{AppArgs, ConfigArgs, utils::load_diagram};
 
@@ -20,9 +21,13 @@ pub struct Args {
     #[arg(short, long)]
     pub g: Option<usize>,
 
-    /// Bound the computation by the 4-genus
+    /// Filter candidates using the 4-genus bound
     #[arg(short='G', long)]
     pub g4: Option<usize>,
+
+    /// Filter candidates using a known value of the tau invariant
+    #[arg(short, long)]
+    pub tau: Option<isize>,
 
     #[command(flatten)]
     pub config: ConfigArgs,
@@ -47,10 +52,11 @@ pub fn dispatch(args: &Args) -> Result<String, Box<dyn std::error::Error>> {
     let gd = if args.mirror { gd.rotate90() } else { gd };
     gd.log_diagram();
 
-    match d_with_config(&gd, p, q, args.g, args.g4, args.config.config()) {
+    let config = G0CalcConfig { accept_if_unique: true, ..args.config.config() };
+    match d_with_config(&gd, p, q, args.g, args.g4, args.tau, config) {
         Ok(ds) => Ok(ds.iter().enumerate().map(|(i, d)| format!("{i}: {d}")).collect::<Vec<_>>().join("\n")),
         Err(e) => {
-            error!("Unable to compute d: some V_k are not decided.");
+            error!("Unable to compute d: G0 is not decided.");
             Err(format!("{e:?}").into())
         }
     }
