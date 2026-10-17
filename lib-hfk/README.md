@@ -4,13 +4,15 @@
 [![docs.rs](https://docs.rs/yui-hfk/badge.svg)](https://docs.rs/yui-hfk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-`yui-hfk` computes *Heegaard Floer knot homology* from grid diagrams, written in
-[Rust](https://www.rust-lang.org). It is built on the [`yui`](https://github.com/taketo1024/yui)
-libraries (`yui-core`, `yui-homology`, `yui-matrix`).
+`yui-hfk` computes *Heegaard Floer knot homology* and related invariants from grid diagrams.
+It is built on the [`yui`](https://github.com/taketo1024/yui) libraries (`yui-core`,
+`yui-homology`, `yui-matrix`), written in [Rust](https://www.rust-lang.org).
 
 Grid homology is a combinatorial description of knot Floer homology, introduced by
 Manolescu, Ozsváth, Sarkar, Szabó and Thurston. From a grid diagram `G` of a knot `K`
 one builds a chain complex whose homology recovers `HFK(K)`, with no analysis involved.
+Related invariants, such as `τ`, `Υ`, the `d`-invariants of Dehn surgeries and `𝒢₀`, can
+also be computed, by the algorithm described in \[SS20\].
 
 Use [`yhf`](https://crates.io/crates/yhf) to use the program from the command line.
 

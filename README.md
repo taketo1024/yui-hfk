@@ -17,7 +17,7 @@ libraries, written in
 
 `yhf setup` downloads the grid diagrams of the knots in [**KnotInfo**](https://knotinfo.org/) (C. Livingston and A. H. Moore,
 *KnotInfo: Table of Knot Invariants*). The user can add more grid
-diagrams in the same format.
+diagrams in the same format. See [`yhf`](./bin-yhf/) for the format and the data directory.
 
 ## Reference
 
