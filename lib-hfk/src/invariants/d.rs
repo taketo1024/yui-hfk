@@ -6,15 +6,16 @@ use yui_core::num::Ratio;
 use crate::g_zero::{Candidates, Region};
 use crate::g_zero::calc::G0CalcError;
 use crate::{G0Calc, G0CalcConfig, GridDiagram, genus};
+use super::tau::tau_with_config;
 
 type Q = Ratio<i64>;
 
+/// `[d(S³_{p/q}(K), i) | 0 ≤ i < |p|]` for coprime `p ≠ 0` and `q > 0`. For `p < 0`, it is
+/// `−d(S³_{−p/q}(K*), i)` by `S³_{p/q}(K) ≅ −S³_{−p/q}(K*)`, with the same labels `i`.
 pub fn d(gd: &GridDiagram, p: i64, q: i64) -> Result<Vec<Q>, G0CalcError> {
     d_with_config(gd, p, q, None, None, None, G0CalcConfig::default())
 }
 
-/// `[d(S³_{p/q}(K), i) | 0 ≤ i < |p|]` for coprime `p ≠ 0` and `q > 0`. For `p < 0`, it is
-/// `−d(S³_{−p/q}(K*), i)` by `S³_{p/q}(K) ≅ −S³_{−p/q}(K*)`, with the same labels `i`.
 pub fn d_with_config(gd: &GridDiagram, p: i64, q: i64, g: Option<usize>, g4: Option<usize>, tau: Option<isize>, config: G0CalcConfig) -> Result<Vec<Q>, G0CalcError> {
     assert!(p != 0, "0-surgery is not supported");
     if p > 0 {
@@ -43,11 +44,30 @@ pub fn v_seq(gd: &GridDiagram) -> Result<Vec<usize>, G0CalcError> {
 }
 
 /// `[V_0(K), V_1(K), …]` by `v_seq_from_g0`, where `G0(K)` is computed with `g`, `g4` and `tau`
-/// as in `G0Calc::init`.
+/// as in `G0Calc::init`. Unless given, `tau` is computed first: if `tau ≤ 0` and `R(0, 0)` is
+/// realizable, all `V_k(K) = 0` without `G0(K)`.
 pub fn v_seq_with_config(gd: &GridDiagram, g: Option<usize>, g4: Option<usize>, tau: Option<isize>, config: G0CalcConfig) -> Result<Vec<usize>, G0CalcError> {
+    // note: accept_if_unique only holds for the candidates of G0Calc::init.
+    let test_all = G0CalcConfig { accept_if_unique: false, ..config };
+    let tau = tau.or_else(|| tau_with_config(gd, g, g4, test_all).ok());
+
+    // note: R(0, 0) ⊂ R(m, k+m) for all k, m ≥ 0, and it is not realizable if tau ≥ 1.
+    if tau.is_some_and(|t| t <= 0) && is_realizable(gd, &Region::simple(0, 0), test_all) {
+        return Ok(vec![]);
+    }
+
     let mut calc = G0Calc::init(gd, g, g4, tau, config);
     calc.run();
     Ok(v_seq_from_g0(&calc.g0()?))
+}
+
+// note: with its own calc, as the complex of a calc is filtered for its candidates.
+fn is_realizable(gd: &GridDiagram, r: &Region, config: G0CalcConfig) -> bool {
+    let mut candidates = Candidates::new();
+    candidates.add(r.clone());
+    let mut calc = G0Calc::init_with_candidates(gd, candidates, config);
+    calc.run();
+    !calc.accepted().is_empty()
 }
 
 /// `[V_0(K), V_1(K), …]` up to the last non-zero one, as `V_{k+1}(K) ≤ V_k(K)`.
@@ -205,6 +225,19 @@ mod tests {
             let gd = GridDiagram::test_data(name).unwrap();
             for gd in [gd.clone(), gd.rotate90()] {
                 assert_eq!(v_seq_from_regions(&gd, None, None, config), v_seq(&gd), "{name}");
+            }
+        }
+    }
+
+    // note: with accept_if_unique as in the CLI, which must not accept R(0, 0) untested.
+    #[test]
+    fn v_seq_accept_if_unique() {
+        let config = G0CalcConfig { accept_if_unique: true, ..G0CalcConfig::default() };
+        for name in ["3_1", "5_1", "6_2"] {
+            let gd = GridDiagram::test_data(name).unwrap();
+            for gd in [gd.clone(), gd.rotate90()] {
+                let expected = v_seq_from_regions(&gd, None, None, G0CalcConfig::default());
+                assert_eq!(v_seq_with_config(&gd, None, None, None, config), expected, "{name}");
             }
         }
     }
