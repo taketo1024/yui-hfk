@@ -21,24 +21,27 @@ pub fn tau_with_config(gd: &GridDiagram, g: Option<usize>, g4: Option<usize>, co
         assert!(g4 <= g, "Invalid inequality: g4 = {g4} > g = {g}");
     }
 
-    let t = compute_tau(gd, g, g4, config)?;
+    let t = match compute_tau(gd, g, g4, config) {
+        Ok(t) if t >= 0 => t,
+        Ok(_) => {
+            info!("reached tau <= -1. switch to mirror.");
+            let t = compute_tau(&gd.rotate90(), g, g4, config)?;
+            assert!(t >= 1);
+            -t
+        }
+        Err(G0CalcError::Resigned) => {
+            info!("resigned. switch to mirror.");
+            match compute_tau(&gd.rotate90(), g, g4, config)? {
+                t if t >= 0 => -t,
+                // note: tau(mirror) ≤ -1 only gives tau ≥ 1.
+                _ => return Err(G0CalcError::Resigned),
+            }
+        }
+    };
 
-    if t >= 0 { 
-        info!("computed tau = {}", t);
-        validate(g4, t);
-        Ok(t) // minimal 
-    } else if t == -1 { 
-        info!("reached tau <= -1. switch to mirror.");
-        let t = compute_tau(&gd.rotate90(), g, g4, config)?;
-
-        assert!(t >= 1);
-        info!("computed tau = {}", -t);
-
-        validate(g4, -t);
-        Ok(-t)
-    } else { 
-        panic!("Unreachable.")
-    }
+    info!("computed tau = {t}");
+    validate(g4, t);
+    Ok(t)
 }
 
 /// `τ(K) = min{ m ∈ ℤ | ∃R ∈ G0(K), R ⊂ {i ≤ −1} ∪ R(0, m) }` ([SS] Thm 2.20), where `R` is
@@ -153,6 +156,16 @@ mod tests {
     #[test]
     fn test_figure8_mirror() {
         assert_eq!(tau(&GridDiagram::figure8().rotate90()), Ok(0));
+    }
+
+    // note: for the mirror of 6_1, the largest system has size 247, and 62 on its mirror.
+    #[test]
+    fn test_resigned_switches_to_mirror() {
+        let gd = GridDiagram::test_data("6_1").unwrap().rotate90();
+        let config = |max_size| G0CalcConfig { max_size, ..G0CalcConfig::default() };
+        assert_eq!(compute_tau(&gd, genus(&gd), None, config(100)), Err(G0CalcError::Resigned));
+        assert_eq!(tau_with_config(&gd, None, None, config(100)), Ok(0));
+        assert_eq!(tau_with_config(&gd, None, None, config(20)), Err(G0CalcError::Resigned));
     }
 
     fn g0(ty: &[&[(isize, isize)]]) -> Vec<Region> {
