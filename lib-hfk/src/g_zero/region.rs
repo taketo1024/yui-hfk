@@ -50,7 +50,16 @@ impl PartialOrd for Corner {
 
 impl fmt::Display for Corner {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({}, {})", self.i, self.j)
+        write!(f, "({}, {})", coord(self.i), coord(self.j))
+    }
+}
+
+// note: isize::MAX and isize::MIN stand for ±∞, as in the regions of tau.
+fn coord(x: isize) -> String {
+    match x {
+        isize::MAX => "∞".to_string(),
+        isize::MIN => "-∞".to_string(),
+        _ => x.to_string(),
     }
 }
 
@@ -242,6 +251,14 @@ mod tests {
         assert_eq!("R[(-2, 1), (-1, 0), (1, -1)]".parse::<Region>().map(|r| r.corners().len()), Ok(3));
         assert!("(1, 1, 1)".parse::<Region>().is_err());
         assert!("foo".parse::<Region>().is_err());
+    }
+
+    #[test]
+    fn test_region_display() {
+        let r1 = Region::new([Corner::new(-1, isize::MAX), Corner::new(0, 0)]);
+        let r2 = Region::new([Corner::new(isize::MIN, 2)]);
+        assert_eq!(r1.to_string(), "R[(-1, ∞), (0, 0)]");
+        assert_eq!(r2.to_string(), "R(-∞, 2)");
     }
 
     #[test]
