@@ -1,0 +1,42 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: build & test (${{ matrix.toolchain }}, ${{ matrix.profile }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # "1.89" is the declared `rust-version` in [workspace.package] — keep the two in step.
+        # "stable" catches breakage from newer compilers before it reaches a release.
+        toolchain: ["1.89", "stable"]
+        profile: [debug, release]
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ matrix.toolchain }}
+    - name: Select the cargo profile
+      run: echo "FLAGS=--locked ${{ matrix.profile == 'release' && '--release' || '' }}" >> "$GITHUB_ENV"
+
+    - name: Build yui-hfk
+      run: cargo build --verbose $FLAGS -p yui-hfk
+    - name: Test yui-hfk
+      run: cargo test --verbose $FLAGS -p yui-hfk
+    - name: Build yhf
+      run: cargo build --verbose $FLAGS -p yhf
+    - name: Test yhf
+      run: cargo test --verbose $FLAGS -p yhf
+
+    # `multithread` (rayon) is on by default; nothing else exercises the single-threaded path.
+    - name: Test yui-hfk (no multithread)
+      run: cargo test --verbose $FLAGS -p yui-hfk --no-default-features
