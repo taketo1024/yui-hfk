@@ -8,7 +8,8 @@ use std::time::Instant;
 use itertools::Itertools;
 use yui_hfk::g_zero::{Candidates, Region, dual};
 use yui_hfk::g_zero::calc::G0CalcError;
-use yui_hfk::{G0Calc, G0CalcConfig, GridDiagram, tau};
+use yui_hfk::{G0Calc, G0CalcConfig, GridDiagram};
+use yui_hfk::tau::tau_with_config;
 
 use types::{K, Regions, regions_of, to_regions};
 
@@ -179,19 +180,33 @@ pub fn run_all<T>(label: &str, knots: &[&T], name: impl Fn(&T) -> &str, check: i
     eprintln!("{label}: {} knots, {undecided} with undecided regions", knots.len());
 }
 
-/// Checks `yui_hfk::tau` of the diagram tested against `tau` of each knot. As in
+/// Checks `|tau|` of each knot against `tau_with_config` on the side with `tau ≥ 0` of the
+/// KnotInfo diagram (ignoring `mirror`), given `g` and `g4`, with one line per knot. As in
 /// `check_g0`, resigning is "undecided" rather than wrong.
-pub fn run_tau(label: &str, knots: &[&K]) {
+pub fn run_tau(label: &str, knots: &[&K], config: G0CalcConfig) {
     assert!(!knots.is_empty(), "{label}: no knots selected");
+    init_logger();
 
-    let undecided = knots.iter().filter(|k| match tau(&k.diagram()) {
-        Ok(t) => {
-            assert_eq!(t, k.tau, "{}: tau", k.name);
-            false
-        }
-        Err(G0CalcError::Resigned) => {
-            eprintln!("  {}: tau undecided", k.name);
-            true
+    let undecided = knots.iter().filter(|k| {
+        eprint!("  {}: ", k.name);
+        // note: on the side with tau < 0, tau_with_config repeats the search on the mirror.
+        let gd = GridDiagram::from_sequences(k.os, k.xs);
+        let knotinfo_tau = if k.mirror { -k.tau } else { k.tau };
+        let gd = if knotinfo_tau < 0 { gd.rotate90() } else { gd };
+        let tau = k.tau.abs();
+        let start = Instant::now();
+        let result = tau_with_config(&gd, Some(k.g), Some(k.g4), config);
+        let secs = start.elapsed().as_secs_f64();
+        match result {
+            Ok(t) => {
+                assert_eq!(t, tau, "{}: tau", k.name);
+                eprintln!("agrees ({secs:.0}s)");
+                false
+            }
+            Err(G0CalcError::Resigned) => {
+                eprintln!("undecided ({secs:.0}s)");
+                true
+            }
         }
     }).count();
 

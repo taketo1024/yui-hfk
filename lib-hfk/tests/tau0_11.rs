@@ -42,12 +42,12 @@ fn g0_all() {
 // note: tau comes from a separate search, so it is checked against the same knots.
 fn run_tau_over(label: &str, keep: impl Fn(&K) -> bool) {
     let selected: Vec<_> = KNOTS.iter().filter(|k| keep(k)).collect();
-    run_tau(label, &selected);
+    run_tau(label, &selected, G0CalcConfig::default());
 }
 
 #[test]
 fn tau_small_grids() {
-    run_tau_over("tau_small_grids", |k| k.grid_number() <= 8);
+    run_tau_over("tau_small_grids", |k| k.grid_number() <= 9);
 }
 
 #[test]

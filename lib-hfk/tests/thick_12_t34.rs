@@ -5,29 +5,36 @@
 //! cannot be simplified. `g`, `g4` and `|tau|` are also from KnotInfo. Each knot is
 //! tested on the side with the smaller linear systems (see `K`).
 //!
-//! With the config in `check` (`try_fast_ng`, `max_size = 2_000_000`), every region of
+//! With `config()` (`try_fast_ng`, `max_size = 2_000_000`), every region of
 //! every knot is decided. Those of this type that need a larger `max_size` (12n59,
 //! 12n220, 12n228, 12n693, 12n696) are in `thick_12_heavy.rs`.
 //!
-//! The test is slow:
+//! The tests are slow:
 //!
 //!     cargo test --release --test thick_12_t34 -- --ignored --nocapture
 
 mod common;
 
 use yui_hfk::G0CalcConfig;
-use common::run_all;
+use common::{run_all, run_tau};
 use common::types::{K, T3_4};
 
-fn check(k: &K) -> usize {
-    k.check(G0CalcConfig { try_fast_ng: true, max_size: 2_000_000, ..Default::default() })
+fn config() -> G0CalcConfig {
+    G0CalcConfig { try_fast_ng: true, max_size: 2_000_000, ..Default::default() }
 }
 
 #[test]
 #[ignore = "slow: run with --release --ignored"]
 fn g0() {
     let knots: Vec<_> = KNOTS.iter().collect();
-    run_all("g0", &knots, |k| k.name, check);
+    run_all("g0", &knots, |k| k.name, |k| k.check(config()));
+}
+
+#[test]
+#[ignore = "slow: run with --release --ignored"]
+fn tau_all() {
+    let knots: Vec<_> = KNOTS.iter().collect();
+    run_tau("tau_all", &knots, config());
 }
 
 #[rustfmt::skip]

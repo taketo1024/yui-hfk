@@ -8,7 +8,7 @@
 //!
 //! There is one test per knot, with `try_fast_ng` and the `max_size` given there, with
 //! which every region is decided. 12n96 and 12n203 are decided through the mirror (see
-//! `check_via_mirror`), and are not decided yet. The `ignore` reason gives the run time,
+//! `check_via_mirror`). The `ignore` reason gives the run time,
 //! one knot at a time on an Apple M1 Ultra (20 cores). "No hint" marks times measured
 //! without the expected type as a hint (12n693 takes 19m without it). Each test is slow:
 //!
@@ -17,7 +17,7 @@
 mod common;
 
 use yui_hfk::G0CalcConfig;
-use common::{check_via_mirror, run_all};
+use common::{check_via_mirror, run_all, run_tau};
 use common::types::{K, T2_3, T2_5, T2_7, T3_4};
 
 fn run(name: &str, max_size: usize) {
@@ -83,15 +83,22 @@ fn g0_12n59() {
 
 // note: with max_size 2M, R[(0,2),(1,1),(2,0)] is left undecided and is decided on the mirror.
 #[test]
-#[ignore = "slow: not decided yet"]
+#[ignore = "slow: 21h43m"]
 fn g0_12n96() {
     check_via_mirror(knot("12n96"), config(2_000_000), config(17_000_000));
 }
 
 #[test]
-#[ignore = "slow: not decided yet"]
+#[ignore = "slow: 23h41m"]
 fn g0_12n203() {
     check_via_mirror(knot("12n203"), config(2_000_000), config(17_000_000));
+}
+
+#[test]
+#[ignore = "slow: run with --release --ignored"]
+fn tau_all() {
+    let knots: Vec<_> = KNOTS.iter().collect();
+    run_tau("tau_all", &knots, config(2_000_000));
 }
 
 #[rustfmt::skip]
