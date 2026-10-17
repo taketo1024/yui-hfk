@@ -30,7 +30,8 @@ one builds a chain complex whose homology recovers `HFK(K)`, with no analysis in
   Built by `from_sequences(os, xs)`, where `os[i]` (resp. `xs[i]`) is the row of the `O`
   (resp. `X`) in column `i`, or by `from_arc_presentation`. `load(name)` reads a diagram
   by knot name (see [Grid diagram data](#grid-diagram-data)), and `rotate90()` gives a
-  diagram of the mirror.
+  diagram of the mirror. `sequences()` gives `[os, xs]` back, `to_table_string()` draws the
+  grid, and `log_diagram()` logs both, with the grid number and the writhe.
 - **`GridPoint`**, **`GridRect`** — points and rectangles on the grid torus.
 
 ### Grid complexes
@@ -39,7 +40,8 @@ one builds a chain complex whose homology recovers `HFK(K)`, with no analysis in
   parameter `V` selects the variant:
   `GCTilde` (`GC~`, \[Book\] Def 4.4.1), `GCHat` (`GC^`, Def 4.6.12),
   `GCMinus` (`GC⁻`, Def 4.6.1) and `GCFiltered` (the filtered complex, Def 13.2.1).
-  `into_complex()` and `into_homology()` give the chain complex and its homology.
+  `into_complex()` and `into_homology()` give the chain complex and its homology, and
+  `log_generators()` logs the numbers of generators by bidegree.
 - **`GCGen`** — a grid state, with its Maslov and Alexander degrees.
   **`GCInfGen`** — a grid state times a monomial in the `U`-variables.
 
@@ -49,13 +51,17 @@ one builds a chain complex whose homology recovers `HFK(K)`, with no analysis in
   It is computed from `GH~(G) ≅ ĤFK(K) ⊗ W^{⊗(n−1)}`, where `W` is 2-dimensional,
   together with the symmetry `ĤFK_{i,j}(K) ≅ ĤFK_{i−2j,−j}(K)`.
 - **`genus(&gd)`** — the Seifert genus `g(K)`, the top Alexander degree of `GH~(G)`.
-- **`tau(&gd)`** — the Ozsváth–Szabó invariant `τ(K)`. `tau_with_config` also accepts the
-  genus and the 4-genus when they are known, and a `G0CalcConfig`.
+- **`tau(&gd)`** — the Ozsváth–Szabó invariant `τ(K)`, by the regions `{i ≤ −1} ∪ R(0, m)`
+  (\[SS\] Thm 2.20). If `τ ≤ −1` or the search resigns, it is computed on the mirror, by
+  `τ(K*) = −τ(K)`. `tau_with_config` also accepts the genus and the 4-genus when they are
+  known, and a `G0CalcConfig`.
 - **`upsilon(&gd)`** — `Υ_K` as an `Upsilon`, a piecewise linear function with rational
   vertices, read from `𝒢₀(K)` (\[SS\] Thm 2.20). `Upsilon::from_g0` reads it from a known `𝒢₀(K)`.
 - **`d(&gd, p, q)`** — the `d`-invariants `d(S³_{p/q}(K), i)` for `0 ≤ i < |p|`, from the
-  `V_k` of \[NW15\], read from `𝒢₀(K)` (\[SS\] Thm 2.20). `v_seq_from_g0` reads them from a
-  known `𝒢₀(K)`.
+  `V_k` of \[NW15\]. `v_seq(&gd)` gives `[V_0, V_1, …]`: it computes `τ` first, and all
+  `V_k = 0` if `τ ≤ 0` and `R(0, 0)` is realizable. Otherwise they are read from `𝒢₀(K)`
+  (\[SS\] Thm 2.20). `v_seq_from_g0` reads them from a known `𝒢₀(K)`, and
+  `v_seq_from_regions` tests the regions `R(m, k+m)` directly, for validation.
 - **`G0Calc`** — computes `𝒢₀(K)` as a list of `Region`s. A `Region` is a finite union of
   quadrants `(−∞, i] × (−∞, j]`, stored as an antichain of `Corner`s. `G0CalcConfig`
   bounds the size of the linear systems. Regions that could not be decided within
@@ -101,14 +107,26 @@ commands and examples.
 ## Tests
 
 ```bash
-cargo test                                       # unit tests
-cargo test --release -- --ignored --nocapture    # slow: G_0 and tau over knots up to 11 crossings
+cargo test                                                          # unit tests and small knots
+cargo test --release --test thick_11 -- --ignored --nocapture       # slow: one file at a time
+cargo test --release --test thick_12_t23 tau_all -- --ignored --nocapture
 ```
 
-The ignored tests in [`tests/thick_11.rs`](https://github.com/taketo1024/yui-hfk/blob/main/lib-hfk/tests/thick_11.rs) and [`tests/tau0_11.rs`](https://github.com/taketo1024/yui-hfk/blob/main/lib-hfk/tests/tau0_11.rs) check `𝒢₀`, `τ` and the genus
-against results from the original Swift implementation, for the 44 knots of Table 1 in \[SS\]
-(grid number 7–11).
-Expected values and grid diagrams are inlined, so they need no external data.
+The ignored tests check `τ` (`tau_*`) and `𝒢₀` (`g0_*`), with the genus, on knots that are
+homologically thick and non-slice, or have `τ = 0`:
+
+- [`tests/thick_11.rs`](https://github.com/taketo1024/yui-hfk/blob/main/lib-hfk/tests/thick_11.rs)
+  and [`tests/tau0_11.rs`](https://github.com/taketo1024/yui-hfk/blob/main/lib-hfk/tests/tau0_11.rs):
+  the 44 knots of Table 1 in \[SS\] (grid number 7–11), against the original Swift
+  implementation.
+- `tests/thick_12_t*.rs` (one file for each `𝒢₀`-type), `tests/tau0_12.rs` and
+  `tests/thick_12_heavy.rs`: the 199 prime knots with 12 crossings, against the `𝒢₀`-types
+  of \[SS\] (v2), with `g`, `g4` and `|τ|` from KnotInfo.
+
+The `τ` tests are cheaper, about 1h45m for all of them on an Apple M1 Ultra. The `𝒢₀` tests
+take much longer, up to about a day for one knot of `thick_12_heavy.rs` (see the `ignore`
+reasons there), so run them one file, or one test, at a time. Expected values and grid
+diagrams are inlined, so the tests need no external data.
 
 ## References
 
