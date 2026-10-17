@@ -25,16 +25,16 @@ fn config() -> G0CalcConfig {
 
 #[test]
 #[ignore = "slow: run with --release --ignored"]
-fn g0() {
+fn tau_all() {
     let knots: Vec<_> = KNOTS.iter().collect();
-    run_all("g0", &knots, |k| k.name, |k| k.check(config()));
+    run_tau("tau_all", &knots, config());
 }
 
 #[test]
 #[ignore = "slow: run with --release --ignored"]
-fn tau_all() {
+fn g0_all() {
     let knots: Vec<_> = KNOTS.iter().collect();
-    run_tau("tau_all", &knots, config());
+    run_all("g0_all", &knots, |k| k.name, |k| k.check(config()));
 }
 
 #[rustfmt::skip]

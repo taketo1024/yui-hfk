@@ -22,6 +22,23 @@ use yui_hfk::G0CalcConfig;
 use common::{run_all, run_tau};
 use common::types::{K, T2_3, T2_3_2_1, T2_5, T3_4, T3_5};
 
+// note: tau comes from a separate search, so it is checked against the same knots.
+fn run_tau_over(label: &str, keep: impl Fn(&K) -> bool) {
+    let selected: Vec<_> = KNOTS.iter().filter(|k| keep(k)).collect();
+    run_tau(label, &selected, G0CalcConfig::default());
+}
+
+#[test]
+fn tau_small() {
+    run_tau_over("tau_small", |k| k.grid_number() <= 9);
+}
+
+#[test]
+#[ignore = "slow: run with --release --ignored"]
+fn tau_all() {
+    run_tau_over("tau_all", |_| true);
+}
+
 fn check(k: &K) -> usize {
     k.check(G0CalcConfig::default())
 }
@@ -32,8 +49,8 @@ fn run_over(label: &str, keep: impl Fn(&K) -> bool) {
 }
 
 #[test]
-fn g0_small_grids() {
-    run_over("g0_small_grids", |k| k.grid_number() <= 9);
+fn g0_small() {
+    run_over("g0_small", |k| k.grid_number() <= 9);
 }
 
 #[test]
@@ -48,23 +65,6 @@ fn g0_11n31() {
     let k = KNOTS.iter().find(|k| k.name == "11n31").expect("no such knot");
     let config = G0CalcConfig { try_fast_ng: true, max_size: 2_000_000, ..Default::default() };
     run_all("g0_11n31", &[k], |k| k.name, |k| k.check(config));
-}
-
-// note: tau comes from a separate search, so it is checked against the same knots.
-fn run_tau_over(label: &str, keep: impl Fn(&K) -> bool) {
-    let selected: Vec<_> = KNOTS.iter().filter(|k| keep(k)).collect();
-    run_tau(label, &selected, G0CalcConfig::default());
-}
-
-#[test]
-fn tau_small_grids() {
-    run_tau_over("tau_small_grids", |k| k.grid_number() <= 9);
-}
-
-#[test]
-#[ignore = "slow: run with --release --ignored"]
-fn tau_all() {
-    run_tau_over("tau_all", |_| true);
 }
 
 #[rustfmt::skip]

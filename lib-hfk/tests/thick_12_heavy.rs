@@ -34,6 +34,13 @@ fn config(max_size: usize) -> G0CalcConfig {
 }
 
 #[test]
+#[ignore = "slow: run with --release --ignored"]
+fn tau_all() {
+    let knots: Vec<_> = KNOTS.iter().collect();
+    run_tau("tau_all", &knots, config(2_000_000));
+}
+
+#[test]
 #[ignore = "slow: 49m (no hint)"]
 fn g0_12n45() {
     run("12n45", 5_000_000);
@@ -92,13 +99,6 @@ fn g0_12n96() {
 #[ignore = "slow: 23h41m"]
 fn g0_12n203() {
     check_via_mirror(knot("12n203"), config(2_000_000), config(17_000_000));
-}
-
-#[test]
-#[ignore = "slow: run with --release --ignored"]
-fn tau_all() {
-    let knots: Vec<_> = KNOTS.iter().collect();
-    run_tau("tau_all", &knots, config(2_000_000));
 }
 
 #[rustfmt::skip]

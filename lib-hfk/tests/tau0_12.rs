@@ -21,6 +21,13 @@ fn config() -> G0CalcConfig {
     G0CalcConfig { try_fast_ng: true, max_size: 2_000_000, ..Default::default() }
 }
 
+#[test]
+#[ignore = "slow: run with --release --ignored"]
+fn tau_all() {
+    let knots: Vec<_> = KNOTS.iter().collect();
+    run_tau("tau_all", &knots, config());
+}
+
 fn run_grid(label: &str, n: usize) {
     let selected: Vec<_> = KNOTS.iter().filter(|k| k.grid_number() == n).collect();
     run_all(label, &selected, |k| k.name, |k| k.check(config()));
@@ -42,13 +49,6 @@ fn g0_tau0_grid11() {
 #[ignore = "slow: run with --release --ignored"]
 fn g0_tau0_grid12() {
     run_grid("g0_tau0_grid12", 12);
-}
-
-#[test]
-#[ignore = "slow: run with --release --ignored"]
-fn tau_all() {
-    let knots: Vec<_> = KNOTS.iter().collect();
-    run_tau("tau_all", &knots, config());
 }
 
 #[rustfmt::skip]

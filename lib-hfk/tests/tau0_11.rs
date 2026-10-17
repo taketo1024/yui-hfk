@@ -19,6 +19,23 @@ use yui_hfk::G0CalcConfig;
 use common::{run_all, run_tau};
 use common::types::{K, O};
 
+// note: tau comes from a separate search, so it is checked against the same knots.
+fn run_tau_over(label: &str, keep: impl Fn(&K) -> bool) {
+    let selected: Vec<_> = KNOTS.iter().filter(|k| keep(k)).collect();
+    run_tau(label, &selected, G0CalcConfig::default());
+}
+
+#[test]
+fn tau_small() {
+    run_tau_over("tau_small", |k| k.grid_number() <= 9);
+}
+
+#[test]
+#[ignore = "slow: run with --release --ignored"]
+fn tau_all() {
+    run_tau_over("tau_all", |_| true);
+}
+
 fn check(k: &K) -> usize {
     k.check(G0CalcConfig::default())
 }
@@ -29,31 +46,14 @@ fn run_over(label: &str, keep: impl Fn(&K) -> bool) {
 }
 
 #[test]
-fn g0_small_grids() {
-    run_over("g0_small_grids", |k| k.grid_number() <= 9);
+fn g0_small() {
+    run_over("g0_small", |k| k.grid_number() <= 9);
 }
 
 #[test]
 #[ignore = "slow: run with --release --ignored"]
 fn g0_all() {
     run_over("g0_all", |_| true);
-}
-
-// note: tau comes from a separate search, so it is checked against the same knots.
-fn run_tau_over(label: &str, keep: impl Fn(&K) -> bool) {
-    let selected: Vec<_> = KNOTS.iter().filter(|k| keep(k)).collect();
-    run_tau(label, &selected, G0CalcConfig::default());
-}
-
-#[test]
-fn tau_small_grids() {
-    run_tau_over("tau_small_grids", |k| k.grid_number() <= 9);
-}
-
-#[test]
-#[ignore = "slow: run with --release --ignored"]
-fn tau_all() {
-    run_tau_over("tau_all", |_| true);
 }
 
 #[rustfmt::skip]
